@@ -1,6 +1,7 @@
-export default function HabitItem({ habit, onToggle }) {
+export default function HabitItem({ habit, onToggle, compact }) {
+  if (!habit) return null
   return (
-    <li className={`habit-item${habit.done ? ' done' : ''}`}>
+    <li className={`habit-item${habit.done ? ' done' : ''}${compact ? ' compact' : ''}`}>
       <button
         className={`habit-check-btn${habit.done ? ' checked' : ''}`}
         onClick={() => onToggle(habit.id)}
@@ -13,7 +14,7 @@ export default function HabitItem({ habit, onToggle }) {
         )}
       </button>
       <span className="habit-text">{habit.text}</span>
-      {habit.done && <span className="habit-done-badge">완료</span>}
+      {!compact && habit.done && <span className="habit-done-badge">완료</span>}
     </li>
   )
 }
