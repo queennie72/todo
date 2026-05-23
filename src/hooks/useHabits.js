@@ -41,7 +41,10 @@ export function useHabits(userId, dateStr) {
   const toggleHabit = (id) =>
     setStates(prev => prev.map((d, i) => i === id ? !d : d))
 
-  return { habits, toggleHabit }
+  const checkHabit = (id) =>
+    setStates(prev => prev.map((d, i) => i === id ? true : d))
+
+  return { habits, toggleHabit, checkHabit }
 }
 
 // 달력용 — 훅 없이 직접 읽기
