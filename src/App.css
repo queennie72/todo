@@ -708,6 +708,42 @@ h1 {
   text-align: center;
 }
 
+/* OCR 스캔 상태 */
+.scan-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+.scan-status.scanning {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+.scan-status.scan-ok {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.scan-status.scan-fail {
+  background: #fff7ed;
+  color: #ea580c;
+}
+.scan-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #bfdbfe;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .inbody-photo-wrap {
   display: flex;
   flex-direction: column;
