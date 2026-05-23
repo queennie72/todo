@@ -116,6 +116,93 @@ function useTodos(userId, dateStr) {
   return { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone }
 }
 
+function RunningRecord({ userId, dateStr }) {
+  const key = `running_${userId}_${dateStr}`
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(key)) || {} } catch { return {} }
+  })
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(key)) || {}
+      setData(saved)
+      setOpen(!!(saved.dist || saved.hours || saved.mins || saved.memo))
+    } catch { setData({}) }
+  }, [key])
+
+  function update(field, value) {
+    const next = { ...data, [field]: value }
+    setData(next)
+    localStorage.setItem(key, JSON.stringify(next))
+  }
+
+  const hasData = data.dist || data.hours || data.mins || data.memo
+
+  return (
+    <div className="running-record">
+      <button className={`running-toggle${hasData ? ' has-data' : ''}`} onClick={() => setOpen(v => !v)}>
+        <span>🏃 러닝 기록</span>
+        {hasData && (
+          <span className="running-summary">
+            {data.dist ? `${data.dist}km` : ''}
+            {(data.hours || data.mins) ? ` ${data.hours || 0}시간 ${data.mins || 0}분` : ''}
+          </span>
+        )}
+        <span className="running-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="running-body">
+          <div className="running-row">
+            <div className="running-field">
+              <span className="running-label">거리</span>
+              <div className="running-input-group">
+                <input
+                  type="number" step="0.1" min="0"
+                  value={data.dist || ''}
+                  onChange={e => update('dist', e.target.value)}
+                  placeholder="0.0"
+                  className="running-num-input"
+                />
+                <span className="running-unit">km</span>
+              </div>
+            </div>
+            <div className="running-field">
+              <span className="running-label">시간</span>
+              <div className="running-input-group">
+                <input
+                  type="number" min="0" max="23"
+                  value={data.hours || ''}
+                  onChange={e => update('hours', e.target.value)}
+                  placeholder="00"
+                  className="running-time-input"
+                />
+                <span className="running-unit">시간</span>
+                <input
+                  type="number" min="0" max="59"
+                  value={data.mins || ''}
+                  onChange={e => update('mins', e.target.value)}
+                  placeholder="00"
+                  className="running-time-input"
+                />
+                <span className="running-unit">분</span>
+              </div>
+            </div>
+          </div>
+          <input
+            type="text"
+            className="running-memo-input"
+            value={data.memo || ''}
+            onChange={e => update('memo', e.target.value)}
+            placeholder="한줄 메모"
+            maxLength={80}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ProgressBar({ total, done, label }) {
   if (total === 0) return null
   const pct = Math.round((done / total) * 100)
@@ -195,6 +282,9 @@ function TodoApp({ user, date, onBack, onLogout }) {
                   <HabitItem key={idx} habit={habits[idx]} onToggle={toggleHabit} compact />
                 ))}
               </ul>
+              {sec.name === '운동' && (
+                <RunningRecord userId={user.id} dateStr={date} />
+              )}
             </div>
           ))}
         </div>

@@ -1,6 +1,149 @@
 import { useState } from 'react'
 import { DAILY_HABITS } from '../hooks/useHabits'
 
+function loadLS(key) {
+  try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
+}
+
+function HealthChart({ userId, year, month, metric }) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+  const points = []
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    if (dateStr > todayStr) break
+    if (metric === 'bloodsugar') {
+      const val = loadLS(`bloodsugar_${userId}_${dateStr}`)
+      if (val != null && !isNaN(parseFloat(val))) points.push({ day: d, val: parseFloat(val) })
+    } else {
+      const ib = loadLS(`inbody_${userId}_${dateStr}`)
+      if (!ib) continue
+      let val = null
+      if (metric === 'weight' && ib.weight) val = parseFloat(ib.weight)
+      else if (metric === 'muscle' && ib.muscle) val = parseFloat(ib.muscle)
+      else if (metric === 'fat' && ib.fat) val = parseFloat(ib.fat)
+      else if (metric === 'fatpct' && ib.fat && ib.weight)
+        val = (parseFloat(ib.fat) / parseFloat(ib.weight)) * 100
+      if (val != null && !isNaN(val)) points.push({ day: d, val })
+    }
+  }
+
+  if (points.length === 0) {
+    return <div className="chart-empty">이달 데이터가 없습니다</div>
+  }
+
+  const W = 320, H = 160
+  const PAD = { top: 28, right: 16, bottom: 28, left: 46 }
+  const innerW = W - PAD.left - PAD.right
+  const innerH = H - PAD.top - PAD.bottom
+
+  const vals = points.map(p => p.val)
+  let minV = Math.min(...vals), maxV = Math.max(...vals)
+  const span = maxV - minV
+  if (span < 1) { minV -= 1; maxV += 1 } else { minV -= span * 0.12; maxV += span * 0.12 }
+  const finalSpan = maxV - minV
+
+  const cx = d => PAD.left + ((d - 1) / Math.max(daysInMonth - 1, 1)) * innerW
+  const cy = v => PAD.top + (1 - (v - minV) / finalSpan) * innerH
+
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${cx(p.day).toFixed(1)},${cy(p.val).toFixed(1)}`).join(' ')
+  const color = metric === 'bloodsugar' ? '#22c55e' : '#3b82f6'
+  const decimals = metric === 'fatpct' ? 1 : 1
+
+  const yTicks = [minV, (minV + maxV) / 2, maxV]
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+      {yTicks.map((v, i) => (
+        <g key={i}>
+          <line x1={PAD.left} y1={cy(v)} x2={W - PAD.right} y2={cy(v)}
+            stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,3" />
+          <text x={PAD.left - 5} y={cy(v) + 4} textAnchor="end" fontSize="10" fill="#9ca3af">
+            {v.toFixed(decimals)}
+          </text>
+        </g>
+      ))}
+      {points.length > 1 && (
+        <path d={pathD} fill="none" stroke={color} strokeWidth="2.5"
+          strokeLinejoin="round" strokeLinecap="round" />
+      )}
+      {points.map(p => (
+        <g key={p.day}>
+          <circle cx={cx(p.day)} cy={cy(p.val)} r="4.5"
+            fill="#fff" stroke={color} strokeWidth="2.5" />
+          <text x={cx(p.day)} y={cy(p.val) - 10} textAnchor="middle"
+            fontSize="10" fill="#374151" fontWeight="600">
+            {p.val.toFixed(decimals)}
+          </text>
+          <text x={cx(p.day)} y={H - PAD.bottom + 16} textAnchor="middle"
+            fontSize="10" fill="#9ca3af">
+            {p.day}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function HealthMetricsCard({ userId, year, month }) {
+  const [mainTab, setMainTab] = useState('inbody')
+  const [ibMetric, setIbMetric] = useState('weight')
+
+  const activeMetric = mainTab === 'bloodsugar' ? 'bloodsugar' : ibMetric
+  const color = mainTab === 'bloodsugar' ? '#22c55e' : '#3b82f6'
+
+  const metricLabel = {
+    weight: '체중 (kg)', muscle: '근육량 (kg)', fat: '체지방 (kg)',
+    fatpct: '체지방률 (%)', bloodsugar: '공복혈당 (mg/dL)',
+  }[activeMetric]
+
+  return (
+    <div className="review-card">
+      <div className="review-card-header">
+        <div className="review-card-left">
+          <span className="review-color-dot" style={{ background: color }} />
+          <div>
+            <div className="review-card-title">건강 측정 추이</div>
+            <div className="review-card-habits">한달간 측정 데이터 그래프</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="metric-tabs">
+        {[{ key: 'inbody', label: '인바디 측정', color: '#3b82f6' },
+          { key: 'bloodsugar', label: '공복혈당 측정', color: '#22c55e' }].map(t => (
+          <button key={t.key}
+            className={`metric-tab${mainTab === t.key ? ' active' : ''}`}
+            style={mainTab === t.key ? { borderColor: t.color, color: t.color, background: '#f0f9ff' } : {}}
+            onClick={() => setMainTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {mainTab === 'inbody' && (
+        <div className="metric-subtabs">
+          {[{ key: 'weight', label: '체중' }, { key: 'muscle', label: '근육량' },
+            { key: 'fat', label: '체지방' }, { key: 'fatpct', label: '체지방률' }].map(t => (
+            <button key={t.key}
+              className={`metric-subtab${ibMetric === t.key ? ' active' : ''}`}
+              onClick={() => setIbMetric(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="chart-metric-label">{metricLabel}</div>
+      <div className="chart-wrap">
+        <HealthChart userId={userId} year={year} month={month} metric={activeMetric} />
+      </div>
+    </div>
+  )
+}
+
 const SECTIONS = [
   { name: '건강측정', indices: [0, 1], color: '#3b82f6', light: '#bfdbfe' },
   { name: '식단',    indices: [2, 4, 5], color: '#22c55e', light: '#bbf7d0' },
@@ -139,6 +282,9 @@ export default function MonthlyReview({ userId, onBack }) {
         <span className="cal-title">{year}년 {month + 1}월</span>
         <button className="cal-nav-btn" onClick={nextMonth}>›</button>
       </div>
+
+      {/* 건강 측정 추이 그래프 */}
+      <HealthMetricsCard userId={userId} year={year} month={month} />
 
       {/* 사진 달력 */}
       <PhotoCalendar

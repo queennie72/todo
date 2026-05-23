@@ -1368,6 +1368,207 @@ h1 {
   align-items: flex-end;
 }
 
+/* ── 러닝 기록 ── */
+.running-record {
+  margin-top: 0.5rem;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff7ed;
+}
+
+.running-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ea580c;
+  text-align: left;
+}
+
+.running-toggle .running-summary {
+  font-weight: 500;
+  color: #c2410c;
+  background: #ffedd5;
+  border-radius: 99px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.running-toggle .running-arrow {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #fb923c;
+}
+
+.running-toggle.has-data {
+  background: #ffedd5;
+}
+
+.running-body {
+  padding: 0.625rem 0.75rem 0.75rem;
+  border-top: 1px solid #fed7aa;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.running-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.running-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 120px;
+}
+
+.running-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.running-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.running-num-input {
+  width: 72px;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  text-align: right;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+
+.running-num-input:focus {
+  border-color: #f97316;
+}
+
+.running-time-input {
+  width: 46px;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 0.35rem 0.3rem;
+  font-size: 0.9rem;
+  text-align: center;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+
+.running-time-input:focus {
+  border-color: #f97316;
+}
+
+.running-unit {
+  font-size: 0.78rem;
+  color: #92400e;
+  white-space: nowrap;
+}
+
+.running-memo-input {
+  width: 100%;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.875rem;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+
+.running-memo-input:focus {
+  border-color: #f97316;
+}
+
+.running-memo-input::placeholder {
+  color: #d97706;
+  opacity: 0.6;
+}
+
+/* ── 건강 측정 추이 그래프 ── */
+.metric-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+
+.metric-tab {
+  flex: 1;
+  padding: 0.45rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.metric-tab.active {
+  background: #eff6ff;
+}
+
+.metric-subtabs {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.metric-subtab {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: transparent;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.metric-subtab.active {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+.chart-metric-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.chart-wrap {
+  padding: 0.25rem 0;
+}
+
+.chart-empty {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
 .day-photo {
   width: 100%;
   border-radius: var(--radius);
