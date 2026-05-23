@@ -1,0 +1,103 @@
+{
+  "auth_users": {
+    "jedh96@naver.com": {
+      "id": "191a827f-2b81-4155-8a37-6eb03703b43b",
+      "password": "Q2xhdWRlMjAwNSE="
+    }
+  },
+  "photo_191a827f-2b81-4155-8a37-6eb03703b43b_2026-05-23": "",
+  "memo_191a827f-2b81-4155-8a37-6eb03703b43b_2026-05-23": "",
+  "habits_191a827f-2b81-4155-8a37-6eb03703b43b_2026-05-23": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "emoji_191a827f-2b81-4155-8a37-6eb03703b43b_2026-05-23": "",
+  "reset_v4_191a827f-2b81-4155-8a37-6eb03703b43b": 1,
+  "todos_191a827f-2b81-4155-8a37-6eb03703b43b_2026-05-23": [],
+  "wellness_v3": {
+    "records": [
+      {
+        "date": "2026-05-09",
+        "bgFast": 134,
+        "weight": 61.2,
+        "fatMass": 20.6,
+        "muscle": 22.5,
+        "height": 157,
+        "fat": 33.7,
+        "bmi": 24.8,
+        "mood": "최고",
+        "exSessions": [
+          {
+            "label": "새벽",
+            "type": "등산",
+            "mins": 96,
+            "cal": 545
+          }
+        ],
+        "exercise": 96,
+        "exCalTotal": 545
+      },
+      {
+        "date": "2026-05-10",
+        "bgFast": 130,
+        "weight": 61.3,
+        "fatMass": 20.2,
+        "muscle": 22.7,
+        "height": 157,
+        "fat": 33,
+        "bmi": 24.9,
+        "mood": "최고",
+        "exSessions": [
+          {
+            "label": "점심",
+            "type": "등산",
+            "mins": 150,
+            "cal": null
+          }
+        ],
+        "exercise": 150,
+        "exCalTotal": 0
+      },
+      {
+        "date": "2026-05-11",
+        "bgFast": 149,
+        "weight": 61.9,
+        "fatMass": 20.2,
+        "muscle": 23,
+        "height": 157,
+        "fat": 32.6,
+        "bmi": 25.1,
+        "mood": "최고",
+        "exSessions": [
+          {
+            "label": "새벽",
+            "type": "",
+            "mins": 96,
+            "cal": null
+          }
+        ],
+        "exercise": 96,
+        "exCalTotal": 0
+      }
+    ],
+    "suppList": [],
+    "selectedPoop": "",
+    "selectedMood": "최고",
+    "memoDateOffset": 0,
+    "userHeight": 157,
+    "geminiKey": "AIzaSyBiu2bjz3ukEEfk6FK2buONA4DoZo6HhvM"
+  },
+  "auth_remember_email": "jedh96@naver.com",
+  "auth_session": {
+    "id": "191a827f-2b81-4155-8a37-6eb03703b43b",
+    "email": "jedh96@naver.com"
+  }
+}
