@@ -4,6 +4,7 @@ import TodoList from './components/TodoList'
 import Calendar from './components/Calendar'
 import HabitItem from './components/HabitItem'
 import MonthlyReview from './components/MonthlyReview'
+import HealthRecord from './components/HealthRecord'
 import AuthPage from './pages/AuthPage'
 import { useAuth } from './hooks/useAuth'
 import { useHabits, clearLegacyData } from './hooks/useHabits'
@@ -198,6 +199,9 @@ function TodoApp({ user, date, onBack, onLogout }) {
           ))}
         </div>
       </section>
+
+      {/* 건강 기록 */}
+      <HealthRecord userId={user.id} dateStr={date} />
 
       {/* 오늘의 감정 */}
       <section className="section">
