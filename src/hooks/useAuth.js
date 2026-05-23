@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const USERS_KEY = 'auth_users'
+const USERS_KEY   = 'auth_users'
 const SESSION_KEY = 'auth_session'
 
 function getUsers() {
@@ -11,11 +11,29 @@ function getSession() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY)) } catch { return null }
 }
 
+async function fetchUsersFromServer() {
+  try {
+    const res = await fetch('/api/store/' + encodeURIComponent(USERS_KEY))
+    if (!res.ok) return null
+    return await res.json()
+  } catch { return null }
+}
+
 export function useAuth() {
   const [user, setUser] = useState(getSession)
 
-  function login(email, password) {
-    const users = getUsers()
+  async function login(email, password) {
+    let users = getUsers()
+
+    // localStorage에 계정이 없으면 서버에서 직접 가져오기
+    if (!users[email.toLowerCase()]) {
+      const serverUsers = await fetchUsersFromServer()
+      if (serverUsers) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(serverUsers))
+        users = serverUsers
+      }
+    }
+
     const stored = users[email.toLowerCase()]
     if (!stored || stored.password !== btoa(password)) {
       throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.')
