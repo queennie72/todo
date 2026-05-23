@@ -4,7 +4,11 @@ import { DAILY_HABITS } from '../hooks/useHabits'
 function loadLS(key) {
   try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
 }
+function saveLS(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
+}
 
+// ── 건강 측정 그래프 ──────────────────────────────────────────
 function HealthChart({ userId, year, month, metric }) {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const today = new Date()
@@ -30,9 +34,7 @@ function HealthChart({ userId, year, month, metric }) {
     }
   }
 
-  if (points.length === 0) {
-    return <div className="chart-empty">이달 데이터가 없습니다</div>
-  }
+  if (points.length === 0) return <div className="chart-empty">이달 데이터가 없습니다</div>
 
   const W = 320, H = 160
   const PAD = { top: 28, right: 16, bottom: 28, left: 46 }
@@ -47,40 +49,24 @@ function HealthChart({ userId, year, month, metric }) {
 
   const cx = d => PAD.left + ((d - 1) / Math.max(daysInMonth - 1, 1)) * innerW
   const cy = v => PAD.top + (1 - (v - minV) / finalSpan) * innerH
-
   const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${cx(p.day).toFixed(1)},${cy(p.val).toFixed(1)}`).join(' ')
   const color = metric === 'bloodsugar' ? '#22c55e' : '#3b82f6'
-  const decimals = metric === 'fatpct' ? 1 : 1
-
   const yTicks = [minV, (minV + maxV) / 2, maxV]
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
       {yTicks.map((v, i) => (
         <g key={i}>
-          <line x1={PAD.left} y1={cy(v)} x2={W - PAD.right} y2={cy(v)}
-            stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,3" />
-          <text x={PAD.left - 5} y={cy(v) + 4} textAnchor="end" fontSize="10" fill="#9ca3af">
-            {v.toFixed(decimals)}
-          </text>
+          <line x1={PAD.left} y1={cy(v)} x2={W - PAD.right} y2={cy(v)} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4,3" />
+          <text x={PAD.left - 5} y={cy(v) + 4} textAnchor="end" fontSize="10" fill="#9ca3af">{v.toFixed(1)}</text>
         </g>
       ))}
-      {points.length > 1 && (
-        <path d={pathD} fill="none" stroke={color} strokeWidth="2.5"
-          strokeLinejoin="round" strokeLinecap="round" />
-      )}
+      {points.length > 1 && <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
       {points.map(p => (
         <g key={p.day}>
-          <circle cx={cx(p.day)} cy={cy(p.val)} r="4.5"
-            fill="#fff" stroke={color} strokeWidth="2.5" />
-          <text x={cx(p.day)} y={cy(p.val) - 10} textAnchor="middle"
-            fontSize="10" fill="#374151" fontWeight="600">
-            {p.val.toFixed(decimals)}
-          </text>
-          <text x={cx(p.day)} y={H - PAD.bottom + 16} textAnchor="middle"
-            fontSize="10" fill="#9ca3af">
-            {p.day}
-          </text>
+          <circle cx={cx(p.day)} cy={cy(p.val)} r="4.5" fill="#fff" stroke={color} strokeWidth="2.5" />
+          <text x={cx(p.day)} y={cy(p.val) - 10} textAnchor="middle" fontSize="10" fill="#374151" fontWeight="600">{p.val.toFixed(1)}</text>
+          <text x={cx(p.day)} y={H - PAD.bottom + 16} textAnchor="middle" fontSize="10" fill="#9ca3af">{p.day}</text>
         </g>
       ))}
     </svg>
@@ -91,33 +77,22 @@ function HealthChartPopup({ userId, year, month, type, onClose }) {
   const [ibMetric, setIbMetric] = useState('weight')
   const activeMetric = type === 'bloodsugar' ? 'bloodsugar' : ibMetric
   const color = type === 'bloodsugar' ? '#22c55e' : '#3b82f6'
-  const metricLabel = {
-    weight: '체중 (kg)', muscle: '근육량 (kg)', fat: '체지방 (kg)',
-    fatpct: '체지방률 (%)', bloodsugar: '공복혈당 (mg/dL)',
-  }[activeMetric]
-  const title = type === 'bloodsugar' ? '공복혈당 추이' : '인바디 추이'
+  const metricLabel = { weight: '체중 (kg)', muscle: '근육량 (kg)', fat: '체지방 (kg)', fatpct: '체지방률 (%)', bloodsugar: '공복혈당 (mg/dL)' }[activeMetric]
 
   return (
     <div className="chart-popup-overlay" onClick={onClose}>
       <div className="chart-popup" onClick={e => e.stopPropagation()}>
         <div className="chart-popup-header">
-          <span className="chart-popup-title" style={{ color }}>{title}</span>
+          <span className="chart-popup-title" style={{ color }}>{type === 'bloodsugar' ? '공복혈당 추이' : '인바디 추이'}</span>
           <button className="chart-popup-close" onClick={onClose}>✕</button>
         </div>
-
         {type === 'inbody' && (
           <div className="metric-subtabs">
-            {[{ key: 'weight', label: '체중' }, { key: 'muscle', label: '근육량' },
-              { key: 'fat', label: '체지방' }, { key: 'fatpct', label: '체지방률' }].map(t => (
-              <button key={t.key}
-                className={`metric-subtab${ibMetric === t.key ? ' active' : ''}`}
-                onClick={() => setIbMetric(t.key)}>
-                {t.label}
-              </button>
+            {[{ key: 'weight', label: '체중' }, { key: 'muscle', label: '근육량' }, { key: 'fat', label: '체지방' }, { key: 'fatpct', label: '체지방률' }].map(t => (
+              <button key={t.key} className={`metric-subtab${ibMetric === t.key ? ' active' : ''}`} onClick={() => setIbMetric(t.key)}>{t.label}</button>
             ))}
           </div>
         )}
-
         <div className="chart-metric-label">{year}년 {month + 1}월 · {metricLabel}</div>
         <div className="chart-wrap">
           <HealthChart userId={userId} year={year} month={month} metric={activeMetric} />
@@ -127,6 +102,147 @@ function HealthChartPopup({ userId, year, month, type, onClose }) {
   )
 }
 
+// ── 날짜 상세 팝업 ────────────────────────────────────────────
+const EMOJIS = [
+  { emoji: '😊', label: '행복' }, { emoji: '🥰', label: '사랑' }, { emoji: '🤩', label: '신남' },
+  { emoji: '😎', label: '멋짐' }, { emoji: '🥳', label: '파티' }, { emoji: '😄', label: '기쁨' },
+  { emoji: '🤗', label: '따뜻함' }, { emoji: '😌', label: '평온' }, { emoji: '🙂', label: '만족' },
+  { emoji: '😴', label: '졸림' }, { emoji: '😪', label: '피곤' }, { emoji: '🥺', label: '슬픔' },
+  { emoji: '😢', label: '눈물' }, { emoji: '😭', label: '통곡' }, { emoji: '😅', label: '당황' },
+  { emoji: '😤', label: '답답' }, { emoji: '😡', label: '화남' }, { emoji: '🤔', label: '고민' },
+]
+
+const POPUP_SECTIONS = [
+  { name: '건강측정', color: '#3b82f6', indices: [0, 1] },
+  { name: '식단',    color: '#22c55e', indices: [2, 4, 5] },
+  { name: '생활습관', color: '#a855f7', indices: [3] },
+  { name: '운동',    color: '#f97316', indices: [7, 8, 9] },
+  { name: '하루정리', color: '#14b8a6', indices: [6] },
+]
+
+function DayPopup({ userId, dateStr, onClose }) {
+  const [y, m, d] = dateStr.split('-')
+  const label = `${y}년 ${Number(m)}월 ${Number(d)}일`
+
+  const [todos, setTodosState] = useState(() => {
+    const saved = loadLS(`todos_${userId}_${dateStr}`)
+    return Array.isArray(saved) ? saved : []
+  })
+  const [habits, setHabitsState] = useState(() => {
+    const saved = loadLS(`habits_${userId}_${dateStr}`)
+    return Array.isArray(saved) && saved.length === DAILY_HABITS.length ? saved : DAILY_HABITS.map(() => false)
+  })
+  const [emoji, setEmojiState] = useState(() => loadLS(`emoji_${userId}_${dateStr}`) || '')
+  const [memo, setMemoState] = useState(() => loadLS(`memo_${userId}_${dateStr}`) || '')
+  const [newTodo, setNewTodo] = useState('')
+
+  function setTodos(next) { setTodosState(next); saveLS(`todos_${userId}_${dateStr}`, next) }
+  function setHabits(next) { setHabitsState(next); saveLS(`habits_${userId}_${dateStr}`, next) }
+  function setEmoji(val) { setEmojiState(val); saveLS(`emoji_${userId}_${dateStr}`, val) }
+  function setMemo(val) { setMemoState(val); saveLS(`memo_${userId}_${dateStr}`, val) }
+
+  function addTodo() {
+    const text = newTodo.trim()
+    if (!text) return
+    setTodos([{ id: Date.now(), text, done: false }, ...todos])
+    setNewTodo('')
+  }
+
+  return (
+    <div className="day-popup-overlay" onClick={onClose}>
+      <div className="day-popup" onClick={e => e.stopPropagation()}>
+        <div className="day-popup-header">
+          <span className="day-popup-title">{label}</span>
+          <button className="day-popup-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="day-popup-body">
+          {/* 내 할일 */}
+          <div className="popup-section">
+            <div className="popup-section-title">내 할일</div>
+            <div className="popup-add-row">
+              <input
+                className="popup-add-input"
+                value={newTodo}
+                onChange={e => setNewTodo(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addTodo()}
+                placeholder="할일 추가..."
+              />
+              <button className="btn btn-add popup-add-btn" onClick={addTodo}>+</button>
+            </div>
+            {todos.length > 0 && (
+              <ul className="popup-todo-list">
+                {todos.map(t => (
+                  <li key={t.id} className={`popup-todo-item${t.done ? ' done' : ''}`}>
+                    <button
+                      className={`todo-check-btn${t.done ? ' checked' : ''}`}
+                      onClick={() => setTodos(todos.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}
+                    >
+                      {t.done && <svg viewBox="0 0 12 9" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1,5 4,8 11,1" /></svg>}
+                    </button>
+                    <span className="popup-todo-text">{t.text}</span>
+                    <button className="btn-icon danger" onClick={() => setTodos(todos.filter(x => x.id !== t.id))}>✕</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* 루틴 */}
+          <div className="popup-section">
+            <div className="popup-section-title">오늘의 루틴</div>
+            {POPUP_SECTIONS.map(sec => (
+              <div key={sec.name} className="popup-habit-group">
+                <span className="popup-habit-label" style={{ color: sec.color }}>{sec.name}</span>
+                <div className="popup-habit-chips">
+                  {sec.indices.map(idx => (
+                    <button
+                      key={idx}
+                      className={`popup-habit-chip${habits[idx] ? ' done' : ''}`}
+                      style={habits[idx] ? { borderColor: sec.color, background: sec.color + '20', color: sec.color } : {}}
+                      onClick={() => { const n = [...habits]; n[idx] = !n[idx]; setHabits(n) }}
+                    >
+                      {habits[idx] ? '✓ ' : ''}{DAILY_HABITS[idx]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 감정 */}
+          <div className="popup-section">
+            <div className="popup-section-title">오늘의 감정 {emoji}</div>
+            <div className="emoji-grid">
+              {EMOJIS.map(({ emoji: em, label: lb }) => (
+                <button
+                  key={em}
+                  className={`emoji-btn${emoji === em ? ' selected' : ''}`}
+                  onClick={() => setEmoji(emoji === em ? '' : em)}
+                  title={lb}
+                >{em}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* 메모 */}
+          <div className="popup-section">
+            <div className="popup-section-title">하루 메모</div>
+            <textarea
+              className="day-memo"
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              placeholder="오늘 하루를 기록해보세요..."
+              rows={3}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── 공통 상수 ─────────────────────────────────────────────────
 const SECTIONS = [
   { name: '건강측정', indices: [0, 1], color: '#3b82f6', light: '#bfdbfe' },
   { name: '식단',    indices: [2, 4, 5], color: '#22c55e', light: '#bbf7d0' },
@@ -163,7 +279,8 @@ function buildCells(year, month) {
   return cells
 }
 
-function PhotoCalendar({ userId, year, month, cells, todayStr }) {
+// ── 사진 달력 ─────────────────────────────────────────────────
+function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
   const [enlarged, setEnlarged] = useState(null)
 
   return (
@@ -173,20 +290,14 @@ function PhotoCalendar({ userId, year, month, cells, todayStr }) {
           <span className="review-color-dot" style={{ background: '#6366f1' }} />
           <div>
             <div className="review-card-title">이달의 사진</div>
-            <div className="review-card-habits">날짜별 대표 사진 모아보기</div>
+            <div className="review-card-habits">날짜 클릭 시 해당일 입력 화면</div>
           </div>
         </div>
       </div>
 
       <div className="photo-cal-grid">
         {WEEKDAYS.map((d, i) => (
-          <div
-            key={d}
-            className="review-weekday"
-            style={{ color: i === 0 ? '#ef4444' : i === 6 ? '#3b82f6' : undefined }}
-          >
-            {d}
-          </div>
+          <div key={d} className="review-weekday" style={{ color: i === 0 ? '#ef4444' : i === 6 ? '#3b82f6' : undefined }}>{d}</div>
         ))}
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} className="photo-cal-cell empty" />
@@ -198,9 +309,14 @@ function PhotoCalendar({ userId, year, month, cells, todayStr }) {
             <div
               key={dateStr}
               className={`photo-cal-cell${isToday ? ' today' : ''}${isFuture ? ' future' : ''}${photo ? ' has-photo' : ''}`}
-              onClick={() => photo && setEnlarged({ photo, dateStr, day })}
-              style={{ cursor: photo ? 'pointer' : 'default' }}
-              title={photo ? `${month + 1}/${day} 사진 보기` : `${month + 1}/${day}`}
+              onClick={() => {
+                if (isFuture) return
+                if (photo) setEnlarged({ photo, dateStr, day })
+                else onSelectDate(dateStr)
+              }}
+              onContextMenu={e => { e.preventDefault(); if (!isFuture) onSelectDate(dateStr) }}
+              style={{ cursor: isFuture ? 'default' : 'pointer' }}
+              title={isFuture ? '' : photo ? `${month + 1}/${day} 사진 보기` : `${month + 1}/${day} 입력`}
             >
               {photo && <img src={photo} alt={`${day}일`} className="photo-cal-thumb" />}
               <span className="photo-cal-day">{day}</span>
@@ -224,11 +340,13 @@ function PhotoCalendar({ userId, year, month, cells, todayStr }) {
   )
 }
 
+// ── 메인 컴포넌트 ─────────────────────────────────────────────
 export default function MonthlyReview({ userId, onBack }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [chartPopup, setChartPopup] = useState(null)
+  const [popupDate, setPopupDate] = useState(null)
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
   const cells = buildCells(year, month)
@@ -236,20 +354,17 @@ export default function MonthlyReview({ userId, onBack }) {
   const allDays = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
   function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11) }
-    else setMonth(m => m - 1)
+    if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1)
   }
   function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0) }
-    else setMonth(m => m + 1)
+    if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1)
   }
 
   function getSectionRatio(indices, day) {
     const dateStr = toDateStr(year, month, day)
     const states = getHabitStates(userId, dateStr)
     if (states.length === 0) return 0
-    const done = indices.filter(i => states[i]).length
-    return done / indices.length
+    return indices.filter(i => states[i]).length / indices.length
   }
 
   return (
@@ -269,11 +384,8 @@ export default function MonthlyReview({ userId, onBack }) {
 
       {/* 사진 달력 */}
       <PhotoCalendar
-        userId={userId}
-        year={year}
-        month={month}
-        cells={cells}
-        todayStr={todayStr}
+        userId={userId} year={year} month={month} cells={cells}
+        todayStr={todayStr} onSelectDate={setPopupDate}
       />
 
       {/* 5섹션 루틴 히트맵 */}
@@ -289,9 +401,7 @@ export default function MonthlyReview({ userId, onBack }) {
                 <span className="review-color-dot" style={{ background: section.color }} />
                 <div>
                   <div className="review-card-title">{section.name}</div>
-                  <div className="review-card-habits">
-                    {section.indices.map(i => DAILY_HABITS[i]).join(' · ')}
-                  </div>
+                  <div className="review-card-habits">{section.indices.map(i => DAILY_HABITS[i]).join(' · ')}</div>
                 </div>
               </div>
               <div className="review-card-right">
@@ -302,25 +412,15 @@ export default function MonthlyReview({ userId, onBack }) {
 
             <div className="review-mini-cal">
               {WEEKDAYS.map((d, i) => (
-                <div
-                  key={d}
-                  className="review-weekday"
-                  style={{ color: i === 0 ? '#ef4444' : i === 6 ? '#3b82f6' : undefined }}
-                >
-                  {d}
-                </div>
+                <div key={d} className="review-weekday" style={{ color: i === 0 ? '#ef4444' : i === 6 ? '#3b82f6' : undefined }}>{d}</div>
               ))}
-              {cells.map((day, i) => {
-                if (!day) return <div key={`e-${i}`} className="review-day-cell empty" />
+              {cells.map((day, idx) => {
+                if (!day) return <div key={`e-${idx}`} className="review-day-cell empty" />
                 const dateStr = toDateStr(year, month, day)
                 const isFuture = dateStr > todayStr
                 const isToday = dateStr === todayStr
                 const ratio = getSectionRatio(section.indices, day)
-
-                const bg = isFuture || ratio === 0
-                  ? 'transparent'
-                  : ratio === 1 ? section.color : section.light
-
+                const bg = isFuture || ratio === 0 ? 'transparent' : ratio === 1 ? section.color : section.light
                 const numColor = (!isFuture && ratio === 1) ? '#fff' : undefined
 
                 return (
@@ -331,8 +431,10 @@ export default function MonthlyReview({ userId, onBack }) {
                       background: bg,
                       borderColor: isToday ? section.color : undefined,
                       borderWidth: isToday ? '2px' : undefined,
+                      cursor: isFuture ? 'default' : 'pointer',
                     }}
-                    title={`${month + 1}/${day} — ${Math.round(ratio * 100)}%`}
+                    onClick={() => !isFuture && setPopupDate(dateStr)}
+                    title={isFuture ? '' : `${month + 1}/${day} 입력`}
                   >
                     <span className="review-day-num" style={{ color: numColor }}>{day}</span>
                   </div>
@@ -346,12 +448,8 @@ export default function MonthlyReview({ userId, onBack }) {
 
             {section.name === '건강측정' && (
               <div className="health-chart-btns">
-                <button className="health-chart-btn inbody-btn" onClick={() => setChartPopup('inbody')}>
-                  📊 인바디 추이
-                </button>
-                <button className="health-chart-btn bloodsugar-btn" onClick={() => setChartPopup('bloodsugar')}>
-                  📊 공복혈당 추이
-                </button>
+                <button className="health-chart-btn inbody-btn" onClick={() => setChartPopup('inbody')}>📊 인바디 추이</button>
+                <button className="health-chart-btn bloodsugar-btn" onClick={() => setChartPopup('bloodsugar')}>📊 공복혈당 추이</button>
               </div>
             )}
           </div>
@@ -359,13 +457,11 @@ export default function MonthlyReview({ userId, onBack }) {
       })}
 
       {chartPopup && (
-        <HealthChartPopup
-          userId={userId}
-          year={year}
-          month={month}
-          type={chartPopup}
-          onClose={() => setChartPopup(null)}
-        />
+        <HealthChartPopup userId={userId} year={year} month={month} type={chartPopup} onClose={() => setChartPopup(null)} />
+      )}
+
+      {popupDate && (
+        <DayPopup userId={userId} dateStr={popupDate} onClose={() => setPopupDate(null)} />
       )}
     </main>
   )

@@ -1711,6 +1711,163 @@ h1 {
   justify-content: center;
 }
 
+/* ── 날짜 상세 팝업 ── */
+.day-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+}
+
+.day-popup {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.15);
+}
+
+.day-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.day-popup-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.day-popup-close {
+  background: var(--bg);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.day-popup-body {
+  overflow-y: auto;
+  padding: 1rem 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.popup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.popup-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.popup-add-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.popup-add-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.popup-add-input:focus {
+  border-color: var(--accent);
+}
+
+.popup-add-btn {
+  padding: 0.45rem 0.9rem;
+  font-size: 1rem;
+  border-radius: 8px;
+}
+
+.popup-todo-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.popup-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
+.popup-todo-item.done .popup-todo-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.popup-todo-text {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.popup-habit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.popup-habit-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.popup-habit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.popup-habit-chip {
+  padding: 0.3rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.popup-habit-chip.done {
+  font-weight: 600;
+}
+
 .day-photo {
   width: 100%;
   border-radius: var(--radius);
