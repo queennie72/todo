@@ -3,6 +3,7 @@ import AddForm from './components/AddForm'
 import TodoList from './components/TodoList'
 import Calendar from './components/Calendar'
 import HabitItem from './components/HabitItem'
+import MonthlyReview from './components/MonthlyReview'
 import AuthPage from './pages/AuthPage'
 import { useAuth } from './hooks/useAuth'
 import { useHabits, clearLegacyData } from './hooks/useHabits'
@@ -133,7 +134,7 @@ function TodoApp({ user, date, onBack, onLogout }) {
   )
 }
 
-function CalendarView({ user, onSelectDate, onLogout }) {
+function CalendarView({ user, onSelectDate, onLogout, onReview }) {
   return (
     <main className="container">
       <header>
@@ -141,6 +142,7 @@ function CalendarView({ user, onSelectDate, onLogout }) {
           <h1>Todo</h1>
         </div>
         <div className="header-right">
+          <button className="btn btn-ghost" onClick={onReview}>한달 리뷰</button>
           <span className="user-email">{user.email}</span>
           <button className="btn btn-ghost" onClick={onLogout}>로그아웃</button>
         </div>
@@ -153,6 +155,7 @@ function CalendarView({ user, onSelectDate, onLogout }) {
 export default function App() {
   const { user, login, register, logout } = useAuth()
   const [selectedDate, setSelectedDate] = useState(null)
+  const [view, setView] = useState('calendar')
 
   useEffect(() => {
     if (user) clearLegacyData(user.id)
@@ -160,12 +163,17 @@ export default function App() {
 
   if (!user) return <AuthPage onLogin={login} onRegister={register} />
 
+  if (view === 'review') {
+    return <MonthlyReview userId={user.id} onBack={() => setView('calendar')} />
+  }
+
   if (!selectedDate) {
     return (
       <CalendarView
         user={user}
         onSelectDate={setSelectedDate}
         onLogout={logout}
+        onReview={() => setView('review')}
       />
     )
   }
