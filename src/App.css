@@ -628,6 +628,406 @@ h1 {
   white-space: nowrap;
 }
 
+/* Health Record */
+.health-section {
+  gap: 0.75rem;
+}
+
+.health-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.health-block-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.baseline-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #d97706;
+  background: #fef3c7;
+  border-radius: 99px;
+  padding: 0.1rem 0.5rem;
+}
+
+.baseline-hint {
+  font-size: 0.75rem;
+  color: #d97706;
+  text-align: center;
+  margin: 0;
+  padding: 0.25rem 0;
+}
+
+.health-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.health-upload-label:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.health-upload-label.small {
+  padding: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.health-upload-plus {
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.health-upload-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.health-upload-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.inbody-photo-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inbody-photo {
+  width: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  max-height: 280px;
+  background: #f8fafc;
+  display: block;
+}
+
+.inbody-photo-btns {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-sm {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.625rem;
+}
+
+.inbody-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.inbody-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.inbody-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inbody-field-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.inbody-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.inbody-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0.375rem 0.375rem;
+  font-size: 0.875rem;
+  background: transparent;
+  color: var(--text);
+  min-width: 0;
+  width: 100%;
+}
+
+.inbody-unit {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0.375rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.inbody-fatpct-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding: 0.375rem 0.5rem;
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.inbody-fatpct-val {
+  font-size: 1.125rem;
+  color: #3b82f6;
+  margin-right: auto;
+}
+
+.bs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.bs-input {
+  width: 100px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.9375rem;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+
+.bs-input:focus {
+  border-color: #22c55e;
+}
+
+.bs-unit {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.bs-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 0.15rem 0.5rem;
+}
+
+.bs-normal { background: #dcfce7; color: #16a34a; }
+.bs-warn   { background: #fef3c7; color: #d97706; }
+.bs-high   { background: #fee2e2; color: #dc2626; }
+
+/* Delta tags */
+.delta-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+}
+
+.delta-good    { background: #dcfce7; color: #16a34a; }
+.delta-bad     { background: #fee2e2; color: #dc2626; }
+.delta-neutral { background: #f1f5f9; color: #64748b; }
+
+/* 5/9 비교 블록 */
+.health-compare {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.compare-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.compare-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.compare-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 4rem;
+  flex-shrink: 0;
+}
+
+.compare-vals {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text);
+  min-width: 0;
+}
+
+.compare-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* Photo calendar in monthly review */
+.photo-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.photo-cal-cell {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.12s;
+}
+
+.photo-cal-cell.empty {
+  border: none;
+  background: transparent;
+}
+
+.photo-cal-cell.future {
+  opacity: 0.3;
+  border-style: dashed;
+}
+
+.photo-cal-cell.today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.photo-cal-cell.has-photo {
+  border-color: transparent;
+}
+
+.photo-cal-cell.has-photo:hover {
+  opacity: 0.85;
+}
+
+.photo-cal-thumb {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+
+.photo-cal-day {
+  font-size: 0.575rem;
+  font-weight: 700;
+  color: var(--text);
+  position: relative;
+  z-index: 1;
+}
+
+.photo-cal-cell.has-photo .photo-cal-day {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  font-size: 0.5rem;
+}
+
+/* Photo lightbox */
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.photo-lightbox-inner {
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+
+.photo-lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.photo-lightbox-close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.photo-lightbox-close:hover {
+  color: var(--text);
+}
+
+.photo-lightbox-img {
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+
 /* Monthly Review */
 .review-month-nav {
   display: flex;
