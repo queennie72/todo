@@ -1,9 +1,5 @@
 // 로컬 서버(3001)와 localStorage 양방향 동기화
-// 앱 시작 시:
-//   1. 서버 데이터 → localStorage 복원 (서버 우선)
-//   2. localStorage에만 있는 키 → 서버에 업로드 (노트북 기존 데이터 백업)
-// 이후 쓰기:
-//   localStorage 즉시 저장 + 서버 비동기 백업
+// Storage.prototype을 오버라이드해서 모든 setItem/removeItem을 자동 백업
 
 const API = '/api/store'
 
@@ -33,18 +29,22 @@ function syncDelete(key) {
     .catch(() => { serverAvailable = false })
 }
 
-// localStorage.setItem / removeItem 오버라이드 (모든 쓰기 자동 백업)
-const _setItem = localStorage.setItem.bind(localStorage)
-const _removeItem = localStorage.removeItem.bind(localStorage)
+// Storage.prototype 오버라이드 (localStorage.setItem = fn 방식은 항목으로 저장되는 버그 있음)
+const _setItem    = Storage.prototype.setItem
+const _removeItem = Storage.prototype.removeItem
 
-localStorage.setItem = (key, value) => {
-  _setItem(key, value)
-  try { syncSet(key, JSON.parse(value)) } catch { syncSet(key, value) }
+Storage.prototype.setItem = function (key, value) {
+  _setItem.call(this, key, value)
+  if (this === localStorage) {
+    try { syncSet(key, JSON.parse(value)) } catch { syncSet(key, value) }
+  }
 }
 
-localStorage.removeItem = (key) => {
-  _removeItem(key)
-  syncDelete(key)
+Storage.prototype.removeItem = function (key) {
+  _removeItem.call(this, key)
+  if (this === localStorage) {
+    syncDelete(key)
+  }
 }
 
 // 앱 시작 시 양방향 동기화
@@ -60,12 +60,12 @@ export async function initStorage() {
     if (!res.ok) return
     const serverData = await res.json()
 
-    // ── 1. 서버 → localStorage (서버 데이터 복원, 서버 우선) ──
+    // 1. 서버 → localStorage (서버 데이터 복원, 원본 _setItem 사용해 재귀 방지)
     for (const [key, value] of Object.entries(serverData)) {
-      _setItem(key, JSON.stringify(value))
+      _setItem.call(localStorage, key, JSON.stringify(value))
     }
 
-    // ── 2. localStorage → 서버 (서버에 없는 로컬 데이터 업로드) ──
+    // 2. localStorage에만 있는 키 → 서버로 업로드
     const toUpload = {}
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
@@ -84,9 +84,7 @@ export async function initStorage() {
       console.info(`[storage] 서버 업로드: ${Object.keys(toUpload).length}개 항목`)
     }
 
-    const serverCount = Object.keys(serverData).length
-    const uploadCount = Object.keys(toUpload).length
-    console.info(`[storage] 동기화 완료 — 서버 ${serverCount}개 복원, ${uploadCount}개 신규 업로드`)
+    console.info(`[storage] 동기화 완료 — 서버 ${Object.keys(serverData).length}개 복원, ${Object.keys(toUpload).length}개 신규 업로드`)
   } catch (e) {
     console.warn('[storage] 동기화 실패:', e)
   }
