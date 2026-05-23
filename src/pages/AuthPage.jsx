@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+const REMEMBER_KEY = 'auth_remember_email'
+
 function IconUser() {
   return (
     <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -28,18 +30,24 @@ function IconLock() {
 }
 
 export default function AuthPage({ onLogin, onRegister }) {
+  const savedEmail = localStorage.getItem(REMEMBER_KEY) || ''
   const [mode, setMode] = useState('login')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(savedEmail)
   const [password, setPassword] = useState('')
-  const [remember, setRemember] = useState(false)
+  const [remember, setRemember] = useState(!!savedEmail)
   const [error, setError] = useState('')
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     try {
-      if (mode === 'login') onLogin(email, password)
-      else onRegister(email, password)
+      if (mode === 'login') {
+        await onLogin(email, password)
+        if (remember) localStorage.setItem(REMEMBER_KEY, email.toLowerCase())
+        else localStorage.removeItem(REMEMBER_KEY)
+      } else {
+        onRegister(email, password)
+      }
     } catch (err) {
       setError(err.message)
     }
@@ -57,7 +65,7 @@ export default function AuthPage({ onLogin, onRegister }) {
           <IconUser />
         </div>
 
-        <h1 className="auth-logo">User Login</h1>
+        <h1 className="auth-logo">퀴니의 두잉두잉</h1>
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
@@ -66,7 +74,7 @@ export default function AuthPage({ onLogin, onRegister }) {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="Email ID"
+              placeholder="이메일"
               required
               autoComplete="email"
             />
@@ -78,7 +86,7 @@ export default function AuthPage({ onLogin, onRegister }) {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder={mode === 'register' ? 'Password (6자 이상)' : 'Password'}
+              placeholder={mode === 'register' ? '비밀번호 (6자 이상)' : '비밀번호'}
               required
               minLength={mode === 'register' ? 6 : 1}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -95,22 +103,21 @@ export default function AuthPage({ onLogin, onRegister }) {
                   checked={remember}
                   onChange={e => setRemember(e.target.checked)}
                 />
-                Remember me
+                아이디 기억하기
               </label>
-              <button type="button" className="forgot-btn">Forgot Password?</button>
             </div>
           )}
 
           <button type="submit" className="btn btn-auth">
-            {mode === 'login' ? 'LOGIN' : 'SIGN UP'}
+            {mode === 'login' ? '로그인' : '회원가입'}
           </button>
         </form>
 
         <p className="auth-switch">
-          {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+          {mode === 'login' ? '계정이 없으신가요?' : '이미 계정이 있으신가요?'}
           {' '}
           <button type="button" className="link-btn" onClick={switchMode}>
-            {mode === 'login' ? 'Sign up' : 'Login'}
+            {mode === 'login' ? '회원가입' : '로그인'}
           </button>
         </p>
       </div>
