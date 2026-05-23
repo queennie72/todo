@@ -8,6 +8,29 @@ function saveLS(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
 }
 
+async function compressImg(file) {
+  return new Promise(res => {
+    const r = new FileReader()
+    r.onload = e => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 900
+        let { width: w, height: h } = img
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX }
+          else { w = Math.round(w * MAX / h); h = MAX }
+        }
+        const c = document.createElement('canvas')
+        c.width = w; c.height = h
+        c.getContext('2d').drawImage(img, 0, 0, w, h)
+        res(c.toDataURL('image/jpeg', 0.72))
+      }
+      img.src = e.target.result
+    }
+    r.readAsDataURL(file)
+  })
+}
+
 // ── 건강 측정 그래프 ──────────────────────────────────────────
 function HealthChart({ userId, year, month, metric }) {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -281,7 +304,21 @@ function buildCells(year, month) {
 
 // ── 사진 달력 ─────────────────────────────────────────────────
 function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
-  const [enlarged, setEnlarged] = useState(null)
+  const [photoPopup, setPhotoPopup] = useState(null) // { day, dateStr, photo }
+
+  async function handleFileChange(e, dateStr) {
+    const file = e.target.files[0]
+    if (!file) return
+    const compressed = await compressImg(file)
+    saveLS(`photo_${userId}_${dateStr}`, compressed)
+    setPhotoPopup(p => ({ ...p, photo: compressed }))
+    e.target.value = ''
+  }
+
+  function deletePhoto(dateStr) {
+    localStorage.removeItem(`photo_${userId}_${dateStr}`)
+    setPhotoPopup(p => ({ ...p, photo: null }))
+  }
 
   return (
     <div className="review-card">
@@ -290,7 +327,7 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
           <span className="review-color-dot" style={{ background: '#6366f1' }} />
           <div>
             <div className="review-card-title">이달의 사진</div>
-            <div className="review-card-habits">날짜 클릭 시 해당일 입력 화면</div>
+            <div className="review-card-habits">날짜 클릭 시 사진 추가/변경</div>
           </div>
         </div>
       </div>
@@ -309,14 +346,9 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
             <div
               key={dateStr}
               className={`photo-cal-cell${isToday ? ' today' : ''}${isFuture ? ' future' : ''}${photo ? ' has-photo' : ''}`}
-              onClick={() => {
-                if (isFuture) return
-                if (photo) setEnlarged({ photo, dateStr, day })
-                else onSelectDate(dateStr)
-              }}
-              onContextMenu={e => { e.preventDefault(); if (!isFuture) onSelectDate(dateStr) }}
+              onClick={() => { if (!isFuture) setPhotoPopup({ day, dateStr, photo: getDayPhoto(userId, dateStr) }) }}
               style={{ cursor: isFuture ? 'default' : 'pointer' }}
-              title={isFuture ? '' : photo ? `${month + 1}/${day} 사진 보기` : `${month + 1}/${day} 입력`}
+              title={isFuture ? '' : photo ? `${month + 1}/${day} 사진 변경` : `${month + 1}/${day} 사진 추가`}
             >
               {photo && <img src={photo} alt={`${day}일`} className="photo-cal-thumb" />}
               <span className="photo-cal-day">{day}</span>
@@ -325,14 +357,38 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
         })}
       </div>
 
-      {enlarged && (
-        <div className="photo-lightbox" onClick={() => setEnlarged(null)}>
+      {photoPopup && (
+        <div className="photo-lightbox" onClick={() => setPhotoPopup(null)}>
           <div className="photo-lightbox-inner" onClick={e => e.stopPropagation()}>
             <div className="photo-lightbox-header">
-              <span>{month + 1}월 {enlarged.day}일</span>
-              <button className="photo-lightbox-close" onClick={() => setEnlarged(null)}>✕</button>
+              <span>{month + 1}월 {photoPopup.day}일 사진</span>
+              <button className="photo-lightbox-close" onClick={() => setPhotoPopup(null)}>✕</button>
             </div>
-            <img src={enlarged.photo} alt="확대 사진" className="photo-lightbox-img" />
+
+            {photoPopup.photo ? (
+              <>
+                <img src={photoPopup.photo} alt="사진" className="photo-lightbox-img" />
+                <div className="photo-popup-btns">
+                  <label className="btn btn-ghost photo-popup-change-btn">
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => handleFileChange(e, photoPopup.dateStr)} />
+                    사진 변경
+                  </label>
+                  <button className="btn btn-ghost photo-popup-del-btn"
+                    onClick={() => deletePhoto(photoPopup.dateStr)}>
+                    사진 삭제
+                  </button>
+                </div>
+              </>
+            ) : (
+              <label className="photo-popup-upload-label">
+                <input type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => handleFileChange(e, photoPopup.dateStr)} />
+                <span className="photo-upload-plus">+</span>
+                <span>사진 추가</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>탭하면 갤러리에서 선택</span>
+              </label>
+            )}
           </div>
         </div>
       )}

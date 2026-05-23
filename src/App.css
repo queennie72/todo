@@ -1868,6 +1868,50 @@ h1 {
   font-weight: 600;
 }
 
+/* ── 사진 팝업 버튼 ── */
+.photo-popup-btns {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0;
+}
+
+.photo-popup-change-btn {
+  flex: 1;
+  text-align: center;
+  cursor: pointer;
+}
+
+.photo-popup-del-btn {
+  flex: 1;
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+.photo-popup-del-btn:hover {
+  background: #fee2e2;
+}
+
+.photo-popup-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  margin: 0 1rem 1rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.photo-popup-upload-label:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
 .day-photo {
   width: 100%;
   border-radius: var(--radius);
