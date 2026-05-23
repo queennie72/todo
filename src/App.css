@@ -62,6 +62,31 @@ header {
   color: var(--text);
 }
 
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-date-nav {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-date-nav:hover {
+  background: var(--bg);
+  color: var(--accent);
+}
+
 .date-title {
   font-size: 1.1rem;
   font-weight: 700;

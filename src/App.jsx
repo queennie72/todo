@@ -54,6 +54,12 @@ function formatDateLabel(dateStr) {
   return `${y}년 ${Number(m)}월 ${Number(d)}일`
 }
 
+function shiftDate(dateStr, delta) {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + delta)
+  return d.toISOString().slice(0, 10)
+}
+
 function useLocalStorage(key, defaultValue) {
   const [value, setValue] = useState(() => {
     try {
@@ -271,7 +277,7 @@ function ProgressBar({ total, done, label }) {
   )
 }
 
-function TodoApp({ user, date, onBack, onLogout }) {
+function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
   const { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone } = useTodos(user.id, date)
   const { habits, toggleHabit, checkHabit } = useHabits(user.id, date)
   const [emoji, setEmoji] = useLocalStorage(`emoji_${user.id}_${date}`, '')
@@ -294,7 +300,11 @@ function TodoApp({ user, date, onBack, onLogout }) {
       <header>
         <div className="header-left">
           <button className="btn-back" onClick={onBack}>‹</button>
-          <h1 className="date-title">{formatDateLabel(date)}</h1>
+          <div className="date-nav">
+            <button className="btn-date-nav" onClick={() => onDateChange(shiftDate(date, -1))}>‹</button>
+            <h1 className="date-title">{formatDateLabel(date)}</h1>
+            <button className="btn-date-nav" onClick={() => onDateChange(shiftDate(date, 1))}>›</button>
+          </div>
         </div>
         <div className="header-right">
           <span className="user-email">{user.email}</span>
@@ -453,6 +463,7 @@ export default function App() {
       date={selectedDate}
       onBack={() => setSelectedDate(null)}
       onLogout={logout}
+      onDateChange={setSelectedDate}
     />
   )
 }
