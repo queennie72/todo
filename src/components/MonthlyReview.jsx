@@ -373,7 +373,7 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
               <>
                 <img src={photoPopup.photo} alt="사진" className="photo-lightbox-img" />
                 <div className="photo-popup-btns">
-                  <label className="btn btn-ghost photo-popup-change-btn">
+                  <label className="btn btn-ghost photo-popup-change-btn" onClick={e => e.stopPropagation()}>
                     <input type="file" accept="image/*" style={{ display: 'none' }}
                       onChange={e => handleFileChange(e, photoPopup.dateStr)} />
                     사진 변경
@@ -385,7 +385,7 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
                 </div>
               </>
             ) : (
-              <label className="photo-popup-upload-label">
+              <label className="photo-popup-upload-label" onClick={e => e.stopPropagation()}>
                 <input type="file" accept="image/*" style={{ display: 'none' }}
                   onChange={e => handleFileChange(e, photoPopup.dateStr)} />
                 <span className="photo-upload-plus">+</span>
