@@ -5,6 +5,26 @@ import Calendar from './components/Calendar'
 import AuthPage from './pages/AuthPage'
 import { useAuth } from './hooks/useAuth'
 
+const DAILY_HABITS = [
+  '인바디 측정',
+  '공복혈당 측정',
+  '단백질 95g 섭취',
+  '애플워치 움직이기 링 완성',
+  '하루 물 2L 마시기',
+  '영양제 챙겨 먹기',
+  '오늘 하루 리뷰하기',
+]
+
+function makeDefaultTodos(dateStr) {
+  const base = new Date(dateStr).getTime()
+  return DAILY_HABITS.map((text, i) => ({
+    id: base + i + 1,
+    text,
+    done: false,
+    isHabit: true,
+  }))
+}
+
 function formatDateLabel(dateStr) {
   const [y, m, d] = dateStr.split('-')
   return `${y}년 ${Number(m)}월 ${Number(d)}일`
@@ -15,17 +35,21 @@ function useTodos(userId, dateStr) {
 
   const [todos, setTodos] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(storageKey)) || []
+      const saved = JSON.parse(localStorage.getItem(storageKey))
+      if (Array.isArray(saved) && saved.length > 0) return saved
+      return makeDefaultTodos(dateStr)
     } catch {
-      return []
+      return makeDefaultTodos(dateStr)
     }
   })
 
   useEffect(() => {
     setTodos(() => {
       try {
-        return JSON.parse(localStorage.getItem(storageKey)) || []
-      } catch { return [] }
+        const saved = JSON.parse(localStorage.getItem(storageKey))
+        if (Array.isArray(saved) && saved.length > 0) return saved
+        return makeDefaultTodos(dateStr)
+      } catch { return makeDefaultTodos(dateStr) }
     })
   }, [storageKey])
 
@@ -47,12 +71,30 @@ function useTodos(userId, dateStr) {
   return { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone }
 }
 
+function ProgressBar({ total, done }) {
+  if (total === 0) return null
+  const pct = Math.round((done / total) * 100)
+  const allDone = done === total
+  return (
+    <div className="progress-wrap">
+      <div className="progress-track">
+        <div
+          className={`progress-fill${allDone ? ' complete' : ''}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`progress-label${allDone ? ' complete' : ''}`}>
+        {allDone ? '🎉 모두 완료!' : `${done} / ${total} 완료`}
+      </span>
+    </div>
+  )
+}
+
 function TodoApp({ user, date, onBack, onLogout }) {
   const { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone } = useTodos(user.id, date)
 
-  const remaining = todos.filter(t => !t.done).length
-  const hasDone = todos.some(t => t.done)
-  const summaryText = todos.length === 0 ? '' : remaining === 0 ? '모두 완료!' : `${remaining}개 남음`
+  const done = todos.filter(t => t.done).length
+  const hasDone = done > 0
 
   return (
     <main className="container">
@@ -61,7 +103,6 @@ function TodoApp({ user, date, onBack, onLogout }) {
           <button className="btn-back" onClick={onBack}>‹</button>
           <div>
             <h1 className="date-title">{formatDateLabel(date)}</h1>
-            {summaryText && <p className="summary">{summaryText}</p>}
           </div>
         </div>
         <div className="header-right">
@@ -69,6 +110,8 @@ function TodoApp({ user, date, onBack, onLogout }) {
           <button className="btn btn-ghost" onClick={onLogout}>로그아웃</button>
         </div>
       </header>
+
+      <ProgressBar total={todos.length} done={done} />
 
       <AddForm onAdd={addTodo} />
 
