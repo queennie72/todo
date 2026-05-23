@@ -171,6 +171,48 @@ h1 {
   color: var(--text);
 }
 
+/* Progress bar */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow);
+}
+
+.progress-track {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.progress-fill.complete {
+  background: #22c55e;
+}
+
+.progress-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progress-label.complete {
+  color: #16a34a;
+}
+
 /* Todo list */
 .todo-list {
   list-style: none;
@@ -185,17 +227,71 @@ h1 {
   gap: 0.75rem;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
   border-radius: var(--radius);
   padding: 0.75rem 0.875rem;
   box-shadow: var(--shadow);
-  transition: opacity 0.15s;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .todo-item.done {
-  opacity: 0.6;
+  background: #f0fdf4;
+  border-left-color: #22c55e;
+  border-color: #bbf7d0;
 }
 
-/* Checkbox */
+/* Custom check button */
+.todo-check-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+  padding: 0;
+}
+
+.todo-check-btn:hover {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.todo-check-btn.checked {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.todo-check-btn svg {
+  width: 11px;
+  height: 9px;
+}
+
+.todo-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.done-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #dcfce7;
+  border-radius: 99px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Checkbox — legacy (unused, kept for safety) */
 .todo-check {
   appearance: none;
   -webkit-appearance: none;
@@ -315,10 +411,9 @@ h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 3px;
-  padding: 0.5rem 0.25rem;
-  min-height: 48px;
+  padding: 0.5rem 0.25rem 0.4rem;
+  min-height: 64px;
   transition: background 0.12s;
 }
 
@@ -337,6 +432,14 @@ h1 {
   justify-content: center;
 }
 
+.cal-cell.all-done {
+  background: #f0fdf4;
+}
+
+.cal-cell.all-done:hover {
+  background: #dcfce7;
+}
+
 .cal-cell.empty {
   cursor: default;
   pointer-events: none;
@@ -351,6 +454,43 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.cal-progress-bar {
+  width: 80%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.cal-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.cal-cell.all-done .cal-progress-fill {
+  background: #22c55e;
+}
+
+.cal-stats {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.cal-stats-sep {
+  margin: 0 1px;
+  opacity: 0.5;
+}
+
+.cal-all-done-icon {
+  color: #16a34a;
+  font-size: 0.7rem;
+}
 }
 
 .cal-dot {
