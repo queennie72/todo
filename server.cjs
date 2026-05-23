@@ -64,6 +64,17 @@ app.delete('/api/store/:key', (req, res) => {
   res.json({ ok: true })
 })
 
+// 여러 키 한 번에 저장 (localStorage 전체 업로드용)
+app.post('/api/store/bulk', (req, res) => {
+  const data = loadData()
+  const incoming = req.body
+  for (const [key, value] of Object.entries(incoming)) {
+    data[key] = value
+  }
+  saveData(data)
+  res.json({ ok: true, count: Object.keys(incoming).length })
+})
+
 // ── 정적 파일 (빌드된 앱) ────────────────────────────────────
 // /todo/ 경로로 서빙 (GitHub Pages와 동일한 경로)
 if (fs.existsSync(DIST)) {
