@@ -491,6 +491,25 @@ h1 {
   color: #16a34a;
   font-size: 0.7rem;
 }
+
+.cal-todo-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: #ede9fe;
+  border-radius: 99px;
+  padding: 0.05rem 0.35rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.cal-todo-badge.done {
+  color: #16a34a;
+  background: #dcfce7;
+}
+
+.cal-progress-fill.habit-complete {
+  background: #22c55e;
 }
 
 .cal-dot {
@@ -498,6 +517,115 @@ h1 {
   height: 5px;
   border-radius: 50%;
   background: var(--accent);
+}
+
+/* Sections */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.section-count {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.section-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+/* Habit list */
+.habit-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.habit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+
+.habit-item.done {
+  background: #f0fdf4;
+}
+
+.habit-check-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+  padding: 0;
+}
+
+.habit-check-btn:hover {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.habit-check-btn.checked {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.habit-check-btn svg {
+  width: 11px;
+  height: 9px;
+}
+
+.habit-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.habit-item.done .habit-text {
+  color: var(--done-text);
+  text-decoration: line-through;
+}
+
+.habit-done-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #dcfce7;
+  border-radius: 99px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
 }
 
 /* Actions */
