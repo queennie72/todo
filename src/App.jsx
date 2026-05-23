@@ -116,12 +116,47 @@ function useTodos(userId, dateStr) {
   return { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone }
 }
 
+function calcRunningTotals(userId, dateStr) {
+  const [year, month] = dateStr.split('-')
+  const prefix = `running_${userId}_`
+  let monthDist = 0, monthMins = 0, yearDist = 0, yearMins = 0
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (!k.startsWith(prefix)) continue
+    const datePart = k.slice(prefix.length)
+    const [y, m] = datePart.split('-')
+    if (y !== year) continue
+    try {
+      const d = JSON.parse(localStorage.getItem(k)) || {}
+      const dist = parseFloat(d.dist) || 0
+      const mins = (parseInt(d.hours) || 0) * 60 + (parseInt(d.mins) || 0)
+      yearDist += dist
+      yearMins += mins
+      if (m === month) { monthDist += dist; monthMins += mins }
+    } catch {}
+  }
+  return { monthDist, monthMins, yearDist, yearMins }
+}
+
+function fmtTime(totalMins) {
+  if (totalMins === 0) return '0분'
+  const h = Math.floor(totalMins / 60)
+  const m = totalMins % 60
+  if (h === 0) return `${m}분`
+  return m > 0 ? `${h}시간 ${m}분` : `${h}시간`
+}
+
+function fmtDist(km) {
+  return km % 1 === 0 ? `${km}km` : `${km.toFixed(1)}km`
+}
+
 function RunningRecord({ userId, dateStr }) {
   const key = `running_${userId}_${dateStr}`
   const [open, setOpen] = useState(false)
   const [data, setData] = useState(() => {
     try { return JSON.parse(localStorage.getItem(key)) || {} } catch { return {} }
   })
+  const [totals, setTotals] = useState(() => calcRunningTotals(userId, dateStr))
 
   useEffect(() => {
     try {
@@ -129,15 +164,18 @@ function RunningRecord({ userId, dateStr }) {
       setData(saved)
       setOpen(!!(saved.dist || saved.hours || saved.mins || saved.memo))
     } catch { setData({}) }
+    setTotals(calcRunningTotals(userId, dateStr))
   }, [key])
 
   function update(field, value) {
     const next = { ...data, [field]: value }
     setData(next)
     localStorage.setItem(key, JSON.stringify(next))
+    setTotals(calcRunningTotals(userId, dateStr))
   }
 
   const hasData = data.dist || data.hours || data.mins || data.memo
+  const [year, month] = dateStr.split('-')
 
   return (
     <div className="running-record">
@@ -145,7 +183,7 @@ function RunningRecord({ userId, dateStr }) {
         <span>🏃 러닝 기록</span>
         {hasData && (
           <span className="running-summary">
-            {data.dist ? `${data.dist}km` : ''}
+            {data.dist ? fmtDist(parseFloat(data.dist)) : ''}
             {(data.hours || data.mins) ? ` ${data.hours || 0}시간 ${data.mins || 0}분` : ''}
           </span>
         )}
@@ -197,6 +235,20 @@ function RunningRecord({ userId, dateStr }) {
             placeholder="한줄 메모"
             maxLength={80}
           />
+          <div className="running-totals">
+            <div className="running-total-row">
+              <span className="running-total-label">{month}월 누적</span>
+              <span className="running-total-val">{fmtDist(totals.monthDist)}</span>
+              <span className="running-total-sep">·</span>
+              <span className="running-total-val">{fmtTime(totals.monthMins)}</span>
+            </div>
+            <div className="running-total-row">
+              <span className="running-total-label">{year}년 누적</span>
+              <span className="running-total-val">{fmtDist(totals.yearDist)}</span>
+              <span className="running-total-sep">·</span>
+              <span className="running-total-val">{fmtTime(totals.yearMins)}</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

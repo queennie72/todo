@@ -87,58 +87,41 @@ function HealthChart({ userId, year, month, metric }) {
   )
 }
 
-function HealthMetricsCard({ userId, year, month }) {
-  const [mainTab, setMainTab] = useState('inbody')
+function HealthChartPopup({ userId, year, month, type, onClose }) {
   const [ibMetric, setIbMetric] = useState('weight')
-
-  const activeMetric = mainTab === 'bloodsugar' ? 'bloodsugar' : ibMetric
-  const color = mainTab === 'bloodsugar' ? '#22c55e' : '#3b82f6'
-
+  const activeMetric = type === 'bloodsugar' ? 'bloodsugar' : ibMetric
+  const color = type === 'bloodsugar' ? '#22c55e' : '#3b82f6'
   const metricLabel = {
     weight: '체중 (kg)', muscle: '근육량 (kg)', fat: '체지방 (kg)',
     fatpct: '체지방률 (%)', bloodsugar: '공복혈당 (mg/dL)',
   }[activeMetric]
+  const title = type === 'bloodsugar' ? '공복혈당 추이' : '인바디 추이'
 
   return (
-    <div className="review-card">
-      <div className="review-card-header">
-        <div className="review-card-left">
-          <span className="review-color-dot" style={{ background: color }} />
-          <div>
-            <div className="review-card-title">건강 측정 추이</div>
-            <div className="review-card-habits">한달간 측정 데이터 그래프</div>
+    <div className="chart-popup-overlay" onClick={onClose}>
+      <div className="chart-popup" onClick={e => e.stopPropagation()}>
+        <div className="chart-popup-header">
+          <span className="chart-popup-title" style={{ color }}>{title}</span>
+          <button className="chart-popup-close" onClick={onClose}>✕</button>
+        </div>
+
+        {type === 'inbody' && (
+          <div className="metric-subtabs">
+            {[{ key: 'weight', label: '체중' }, { key: 'muscle', label: '근육량' },
+              { key: 'fat', label: '체지방' }, { key: 'fatpct', label: '체지방률' }].map(t => (
+              <button key={t.key}
+                className={`metric-subtab${ibMetric === t.key ? ' active' : ''}`}
+                onClick={() => setIbMetric(t.key)}>
+                {t.label}
+              </button>
+            ))}
           </div>
+        )}
+
+        <div className="chart-metric-label">{year}년 {month + 1}월 · {metricLabel}</div>
+        <div className="chart-wrap">
+          <HealthChart userId={userId} year={year} month={month} metric={activeMetric} />
         </div>
-      </div>
-
-      <div className="metric-tabs">
-        {[{ key: 'inbody', label: '인바디 측정', color: '#3b82f6' },
-          { key: 'bloodsugar', label: '공복혈당 측정', color: '#22c55e' }].map(t => (
-          <button key={t.key}
-            className={`metric-tab${mainTab === t.key ? ' active' : ''}`}
-            style={mainTab === t.key ? { borderColor: t.color, color: t.color, background: '#f0f9ff' } : {}}
-            onClick={() => setMainTab(t.key)}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {mainTab === 'inbody' && (
-        <div className="metric-subtabs">
-          {[{ key: 'weight', label: '체중' }, { key: 'muscle', label: '근육량' },
-            { key: 'fat', label: '체지방' }, { key: 'fatpct', label: '체지방률' }].map(t => (
-            <button key={t.key}
-              className={`metric-subtab${ibMetric === t.key ? ' active' : ''}`}
-              onClick={() => setIbMetric(t.key)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="chart-metric-label">{metricLabel}</div>
-      <div className="chart-wrap">
-        <HealthChart userId={userId} year={year} month={month} metric={activeMetric} />
       </div>
     </div>
   )
@@ -245,6 +228,7 @@ export default function MonthlyReview({ userId, onBack }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
+  const [chartPopup, setChartPopup] = useState(null)
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
   const cells = buildCells(year, month)
@@ -282,9 +266,6 @@ export default function MonthlyReview({ userId, onBack }) {
         <span className="cal-title">{year}년 {month + 1}월</span>
         <button className="cal-nav-btn" onClick={nextMonth}>›</button>
       </div>
-
-      {/* 건강 측정 추이 그래프 */}
-      <HealthMetricsCard userId={userId} year={year} month={month} />
 
       {/* 사진 달력 */}
       <PhotoCalendar
@@ -362,9 +343,30 @@ export default function MonthlyReview({ userId, onBack }) {
             <div className="review-progress-track">
               <div className="review-progress-fill" style={{ width: `${pct}%`, background: section.color }} />
             </div>
+
+            {section.name === '건강측정' && (
+              <div className="health-chart-btns">
+                <button className="health-chart-btn inbody-btn" onClick={() => setChartPopup('inbody')}>
+                  📊 인바디 추이
+                </button>
+                <button className="health-chart-btn bloodsugar-btn" onClick={() => setChartPopup('bloodsugar')}>
+                  📊 공복혈당 추이
+                </button>
+              </div>
+            )}
           </div>
         )
       })}
+
+      {chartPopup && (
+        <HealthChartPopup
+          userId={userId}
+          year={year}
+          month={month}
+          type={chartPopup}
+          onClose={() => setChartPopup(null)}
+        />
+      )}
     </main>
   )
 }

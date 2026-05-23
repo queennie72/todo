@@ -1503,6 +1503,36 @@ h1 {
   opacity: 0.6;
 }
 
+.running-totals {
+  border-top: 1px dashed #fed7aa;
+  padding-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.running-total-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+.running-total-label {
+  font-weight: 700;
+  color: #92400e;
+  min-width: 56px;
+}
+
+.running-total-val {
+  font-weight: 600;
+  color: #c2410c;
+}
+
+.running-total-sep {
+  color: #d97706;
+}
+
 /* ── 건강 측정 추이 그래프 ── */
 .metric-tabs {
   display: flex;
@@ -1567,6 +1597,93 @@ h1 {
   padding: 2rem 0;
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+
+/* ── 건강측정 그래프 버튼 ── */
+.health-chart-btns {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.health-chart-btn {
+  flex: 1;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1.5px solid;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.health-chart-btn.inbody-btn {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.health-chart-btn.inbody-btn:hover {
+  background: #dbeafe;
+}
+
+.health-chart-btn.bloodsugar-btn {
+  border-color: #22c55e;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.health-chart-btn.bloodsugar-btn:hover {
+  background: #dcfce7;
+}
+
+/* ── 건강 측정 팝업 ── */
+.chart-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.chart-popup {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chart-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chart-popup-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.chart-popup-close {
+  background: var(--bg);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .day-photo {
