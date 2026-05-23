@@ -8,6 +8,9 @@ export const DAILY_HABITS = [
   '하루 물 2L 마시기',
   '영양제 챙겨 먹기',
   '오늘 하루 리뷰하기',
+  'F45출석',
+  'RUN',
+  '그외운동',
 ]
 
 function habitKey(userId, dateStr) {
@@ -54,7 +57,7 @@ export function getHabitStats(userId, dateStr) {
 
 // 기존 todos_* 데이터 초기화 (1회 마이그레이션)
 export function clearLegacyData(userId) {
-  const flagKey = `reset_v3_${userId}`
+  const flagKey = `reset_v4_${userId}`
   if (localStorage.getItem(flagKey)) return
   const toDelete = Object.keys(localStorage).filter(k =>
     k.startsWith(`todos_${userId}_`) || k.startsWith(`habits_${userId}_`)
