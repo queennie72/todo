@@ -305,6 +305,7 @@ function buildCells(year, month) {
 // ── 사진 달력 ─────────────────────────────────────────────────
 function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
   const [photoPopup, setPhotoPopup] = useState(null) // { day, dateStr, photo }
+  const [refresh, setRefresh] = useState(0)
 
   async function handleFileChange(e, dateStr) {
     const file = e.target.files[0]
@@ -312,12 +313,14 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
     const compressed = await compressImg(file)
     saveLS(`photo_${userId}_${dateStr}`, compressed)
     setPhotoPopup(p => ({ ...p, photo: compressed }))
+    setRefresh(r => r + 1)
     e.target.value = ''
   }
 
   function deletePhoto(dateStr) {
     localStorage.removeItem(`photo_${userId}_${dateStr}`)
     setPhotoPopup(p => ({ ...p, photo: null }))
+    setRefresh(r => r + 1)
   }
 
   return (
@@ -339,7 +342,8 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} className="photo-cal-cell empty" />
           const dateStr = toDateStr(year, month, day)
-          const photo = getDayPhoto(userId, dateStr)
+          const photo = getDayPhoto(userId, dateStr)  // refresh 변수가 있으면 리렌더 시 재호출됨
+          void refresh
           const isToday = dateStr === todayStr
           const isFuture = dateStr > todayStr
           return (
