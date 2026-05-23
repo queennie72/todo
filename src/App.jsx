@@ -134,7 +134,7 @@ function ProgressBar({ total, done, label }) {
 
 function TodoApp({ user, date, onBack, onLogout }) {
   const { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone } = useTodos(user.id, date)
-  const { habits, toggleHabit } = useHabits(user.id, date)
+  const { habits, toggleHabit, checkHabit } = useHabits(user.id, date)
   const [emoji, setEmoji] = useLocalStorage(`emoji_${user.id}_${date}`, '')
   const [memo, setMemo] = useLocalStorage(`memo_${user.id}_${date}`, '')
   const [photo, setPhoto] = useLocalStorage(`photo_${user.id}_${date}`, '')
@@ -201,7 +201,7 @@ function TodoApp({ user, date, onBack, onLogout }) {
       </section>
 
       {/* 건강 기록 */}
-      <HealthRecord userId={user.id} dateStr={date} />
+      <HealthRecord userId={user.id} dateStr={date} onHealthCheck={checkHabit} />
 
       {/* 오늘의 감정 */}
       <section className="section">
@@ -266,7 +266,7 @@ function CalendarView({ user, onSelectDate, onLogout, onReview }) {
     <main className="container">
       <header>
         <div className="header-left">
-          <h1>Todo</h1>
+          <h1>퀴니의 두잉두잉</h1>
         </div>
         <div className="header-right">
           <button className="btn btn-ghost" onClick={onReview}>한달 리뷰</button>
