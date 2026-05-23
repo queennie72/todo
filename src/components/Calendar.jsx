@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getHabitStats } from '../hooks/useHabits'
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -6,17 +7,14 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-const DEFAULT_TOTAL = 7
-
-function getTodoStats(userId, dateStr) {
+function getUserTodoStats(userId, dateStr) {
   try {
     const data = JSON.parse(localStorage.getItem(`todos_${userId}_${dateStr}`))
     if (Array.isArray(data) && data.length > 0) {
       return { total: data.length, done: data.filter(t => t.done).length }
     }
-  } catch { /* fall through */ }
-  // 저장된 데이터 없으면 기본 7개 루틴 기준으로 표시
-  return { total: DEFAULT_TOTAL, done: 0 }
+  } catch { /* ignore */ }
+  return null
 }
 
 export default function Calendar({ userId, onSelectDate }) {
@@ -58,32 +56,37 @@ export default function Calendar({ userId, onSelectDate }) {
           if (!day) return <div key={`e-${i}`} className="cal-cell empty" />
           const dateStr = toDateStr(year, month, day)
           const isToday = dateStr === todayStr
-          const stats = getTodoStats(userId, dateStr)
-          const allDone = stats && stats.done === stats.total
+          const habitStats = getHabitStats(userId, dateStr)
+          const todoStats = getUserTodoStats(userId, dateStr)
+          const allHabitsDone = habitStats.done === habitStats.total
+          const allTodosDone = todoStats ? todoStats.done === todoStats.total : true
 
           return (
             <button
               key={dateStr}
-              className={`cal-cell${isToday ? ' today' : ''}${allDone ? ' all-done' : ''}`}
+              className={`cal-cell${isToday ? ' today' : ''}${allHabitsDone && allTodosDone ? ' all-done' : ''}`}
               onClick={() => onSelectDate(dateStr)}
             >
               <span className="cal-day-num">{day}</span>
 
-              {stats && (
-                <>
-                  <div className="cal-progress-bar">
-                    <div
-                      className="cal-progress-fill"
-                      style={{ width: `${Math.round((stats.done / stats.total) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="cal-stats">
-                    {allDone
-                      ? <span className="cal-all-done-icon">✓</span>
-                      : <>{stats.done}<span className="cal-stats-sep">/</span>{stats.total}</>
-                    }
-                  </span>
-                </>
+              <div className="cal-progress-bar">
+                <div
+                  className={`cal-progress-fill${allHabitsDone ? ' habit-complete' : ''}`}
+                  style={{ width: `${Math.round((habitStats.done / habitStats.total) * 100)}%` }}
+                />
+              </div>
+
+              <span className="cal-stats">
+                {allHabitsDone
+                  ? <span className="cal-all-done-icon">✓</span>
+                  : <>{habitStats.done}<span className="cal-stats-sep">/</span>{habitStats.total}</>
+                }
+              </span>
+
+              {todoStats && (
+                <span className={`cal-todo-badge${todoStats.done === todoStats.total ? ' done' : ''}`}>
+                  +{todoStats.done}/{todoStats.total}
+                </span>
               )}
             </button>
           )
