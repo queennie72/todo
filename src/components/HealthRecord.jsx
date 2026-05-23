@@ -1,6 +1,28 @@
 import { useState, useEffect } from 'react'
+import { createWorker } from 'tesseract.js'
 
 const BASELINE = '2026-05-09'
+
+function parseInbodyText(text) {
+  const t = text.replace(/\r/g, '\n')
+  const result = {}
+
+  // 체중: 40~199 범위 숫자
+  const wm = t.match(/체중\D{0,20}?(\d{2,3}(?:\.\d)?)/)
+  if (wm) result.weight = wm[1]
+
+  // 골격근량 (InBody 공식 용어) 또는 근육량
+  const mm = t.match(/골격근량\D{0,20}?(\d{1,3}(?:\.\d)?)/) ||
+             t.match(/근육량\D{0,20}?(\d{1,3}(?:\.\d)?)/)
+  if (mm) result.muscle = mm[1]
+
+  // 체지방량 또는 체지방
+  const fm = t.match(/체지방량\D{0,20}?(\d{1,3}(?:\.\d)?)/) ||
+             t.match(/체지방\s{0,5}(\d{1,3}(?:\.\d)?)/)
+  if (fm) result.fat = fm[1]
+
+  return result
+}
 
 function loadLS(key) {
   try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
@@ -50,7 +72,7 @@ function DeltaTag({ d, unit = '', goodDir = 'down' }) {
 
 const EMPTY_IB = { photo: '', weight: '', muscle: '', fat: '' }
 
-export default function HealthRecord({ userId, dateStr }) {
+export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
   const ibKey = `inbody_${userId}_${dateStr}`
   const bsKey = `bloodsugar_${userId}_${dateStr}`
 
@@ -59,6 +81,8 @@ export default function HealthRecord({ userId, dateStr }) {
     const v = loadLS(bsKey); return v != null ? String(v) : ''
   })
   const [showFields, setShowFields] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [scanMsg, setScanMsg] = useState('')
 
   useEffect(() => {
     const savedIb = loadLS(ibKey) || EMPTY_IB
@@ -66,28 +90,64 @@ export default function HealthRecord({ userId, dateStr }) {
     setIb(savedIb)
     setBs(savedBs != null ? String(savedBs) : '')
     setShowFields(!!(savedIb.weight))
+    setScanMsg('')
   }, [ibKey, bsKey])
 
   function updateIb(field, value) {
     const next = { ...ib, [field]: value }
     setIb(next)
     saveLS(ibKey, next)
+    if (next.weight || next.muscle || next.fat) onHealthCheck?.(0)
   }
 
   function updateBs(value) {
     setBs(value)
-    if (value !== '') saveLS(bsKey, parseFloat(value))
-    else localStorage.removeItem(bsKey)
+    if (value !== '') {
+      saveLS(bsKey, parseFloat(value))
+      onHealthCheck?.(1)
+    } else {
+      localStorage.removeItem(bsKey)
+    }
   }
 
   async function handleInbodyPhoto(e) {
     const file = e.target.files[0]
     if (!file) return
     const compressed = await compressImg(file)
-    const next = { ...ib, photo: compressed }
-    setIb(next)
-    saveLS(ibKey, next)
+    const photoState = { ...ib, photo: compressed }
+    setIb(photoState)
+    saveLS(ibKey, photoState)
     setShowFields(true)
+
+    setScanning(true)
+    setScanMsg('언어 데이터 로딩 중...')
+    try {
+      const worker = await createWorker('kor+eng', 1, {
+        logger: m => {
+          if (m.status === 'loading language traineddata') {
+            setScanMsg(`언어 데이터 로딩 중 ${Math.round((m.progress || 0) * 100)}%`)
+          } else if (m.status === 'recognizing text') {
+            setScanMsg(`수치 인식 중 ${Math.round((m.progress || 0) * 100)}%`)
+          }
+        },
+      })
+      const { data: { text } } = await worker.recognize(compressed)
+      await worker.terminate()
+
+      const extracted = parseInbodyText(text)
+      if (extracted.weight || extracted.muscle || extracted.fat) {
+        const updated = { ...photoState, ...extracted }
+        setIb(updated)
+        saveLS(ibKey, updated)
+        onHealthCheck?.(0)
+        setScanMsg('자동 인식 완료 — 수치를 확인해 주세요')
+      } else {
+        setScanMsg('수치를 인식하지 못했습니다. 직접 입력해 주세요')
+      }
+    } catch {
+      setScanMsg('인식 실패 — 직접 입력해 주세요')
+    }
+    setScanning(false)
   }
 
   function removeInbodyPhoto() {
@@ -134,13 +194,24 @@ export default function HealthRecord({ userId, dateStr }) {
                 사진 삭제
               </button>
             </div>
+            {scanning && (
+              <div className="scan-status scanning">
+                <span className="scan-spinner" />
+                <span>{scanMsg}</span>
+              </div>
+            )}
+            {!scanning && scanMsg && (
+              <div className={`scan-status ${scanMsg.startsWith('자동 인식') ? 'scan-ok' : 'scan-fail'}`}>
+                {scanMsg.startsWith('자동 인식') ? '✓ ' : '⚠ '}{scanMsg}
+              </div>
+            )}
           </div>
         ) : (
           <label className="health-upload-label">
             <input type="file" accept="image/*" className="photo-input" onChange={handleInbodyPhoto} />
             <span className="health-upload-plus">+</span>
             <span className="health-upload-text">인바디 결과 사진 업로드</span>
-            <span className="health-upload-sub">사진 업로드 후 수치를 직접 입력하세요</span>
+            <span className="health-upload-sub">업로드하면 체중·근육·체지방을 자동 인식합니다</span>
           </label>
         )}
 
