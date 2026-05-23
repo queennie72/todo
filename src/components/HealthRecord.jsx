@@ -1,0 +1,266 @@
+import { useState, useEffect } from 'react'
+
+const BASELINE = '2026-05-09'
+
+function loadLS(key) {
+  try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
+}
+
+function saveLS(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
+}
+
+async function compressImg(file) {
+  return new Promise(res => {
+    const r = new FileReader()
+    r.onload = e => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 1200
+        let { width: w, height: h } = img
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX }
+          else { w = Math.round(w * MAX / h); h = MAX }
+        }
+        const c = document.createElement('canvas')
+        c.width = w; c.height = h
+        c.getContext('2d').drawImage(img, 0, 0, w, h)
+        res(c.toDataURL('image/jpeg', 0.8))
+      }
+      img.src = e.target.result
+    }
+    r.readAsDataURL(file)
+  })
+}
+
+function diff(a, b) {
+  if (a === '' || a == null || b === '' || b == null) return null
+  return parseFloat(a) - parseFloat(b)
+}
+
+function DeltaTag({ d, unit = '', goodDir = 'down' }) {
+  if (d === null) return null
+  const abs = Math.abs(d).toFixed(1)
+  const sign = d > 0 ? '+' : d < 0 ? '-' : ''
+  const isGood = d === 0 ? null : (goodDir === 'down' ? d < 0 : d > 0)
+  const cls = d === 0 ? 'delta-neutral' : isGood ? 'delta-good' : 'delta-bad'
+  const arrow = d > 0 ? '▲' : d < 0 ? '▼' : '─'
+  return <span className={`delta-tag ${cls}`}>{arrow} {sign}{abs}{unit}</span>
+}
+
+const EMPTY_IB = { photo: '', weight: '', muscle: '', fat: '' }
+
+export default function HealthRecord({ userId, dateStr }) {
+  const ibKey = `inbody_${userId}_${dateStr}`
+  const bsKey = `bloodsugar_${userId}_${dateStr}`
+
+  const [ib, setIb] = useState(() => loadLS(ibKey) || EMPTY_IB)
+  const [bs, setBs] = useState(() => {
+    const v = loadLS(bsKey); return v != null ? String(v) : ''
+  })
+  const [showFields, setShowFields] = useState(false)
+
+  useEffect(() => {
+    const savedIb = loadLS(ibKey) || EMPTY_IB
+    const savedBs = loadLS(bsKey)
+    setIb(savedIb)
+    setBs(savedBs != null ? String(savedBs) : '')
+    setShowFields(!!(savedIb.weight))
+  }, [ibKey, bsKey])
+
+  function updateIb(field, value) {
+    const next = { ...ib, [field]: value }
+    setIb(next)
+    saveLS(ibKey, next)
+  }
+
+  function updateBs(value) {
+    setBs(value)
+    if (value !== '') saveLS(bsKey, parseFloat(value))
+    else localStorage.removeItem(bsKey)
+  }
+
+  async function handleInbodyPhoto(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const compressed = await compressImg(file)
+    const next = { ...ib, photo: compressed }
+    setIb(next)
+    saveLS(ibKey, next)
+    setShowFields(true)
+  }
+
+  function removeInbodyPhoto() {
+    const next = { ...ib, photo: '' }
+    setIb(next)
+    saveLS(ibKey, next)
+  }
+
+  const fatPct = ib.weight && ib.fat
+    ? (parseFloat(ib.fat) / parseFloat(ib.weight)) * 100
+    : null
+
+  const bl = loadLS(`inbody_${userId}_${BASELINE}`) || {}
+  const blFatPct = bl.weight && bl.fat
+    ? (parseFloat(bl.fat) / parseFloat(bl.weight)) * 100
+    : null
+  const blBs = loadLS(`bloodsugar_${userId}_${BASELINE}`)
+
+  const isBaseline = dateStr === BASELINE
+  const hasBaselineData = bl.weight || blBs != null
+
+  const bsNum = parseFloat(bs)
+  const bsStatus = bs ? (bsNum < 100 ? { label: '정상', cls: 'bs-normal' } : bsNum < 126 ? { label: '주의', cls: 'bs-warn' } : { label: '높음', cls: 'bs-high' }) : null
+
+  return (
+    <section className="section health-section">
+      <div className="section-header">
+        <span className="section-title">건강 기록</span>
+        {isBaseline && <span className="baseline-tag">5/9 기준일</span>}
+      </div>
+
+      {/* 인바디 */}
+      <div className="health-block">
+        <div className="health-block-title" style={{ color: '#3b82f6' }}>인바디</div>
+
+        {ib.photo ? (
+          <div className="inbody-photo-wrap">
+            <img src={ib.photo} alt="인바디 결과" className="inbody-photo" />
+            <div className="inbody-photo-btns">
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowFields(s => !s)}>
+                {showFields ? '수치 접기' : '수치 입력'}
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={removeInbodyPhoto}>
+                사진 삭제
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label className="health-upload-label">
+            <input type="file" accept="image/*" className="photo-input" onChange={handleInbodyPhoto} />
+            <span className="health-upload-plus">+</span>
+            <span className="health-upload-text">인바디 결과 사진 업로드</span>
+            <span className="health-upload-sub">사진 업로드 후 수치를 직접 입력하세요</span>
+          </label>
+        )}
+
+        {showFields && (
+          <div className="inbody-fields">
+            <div className="inbody-row">
+              {[
+                { key: 'weight', label: '체중', unit: 'kg' },
+                { key: 'muscle', label: '근육량', unit: 'kg' },
+                { key: 'fat', label: '체지방', unit: 'kg' },
+              ].map(({ key, label, unit }) => (
+                <label key={key} className="inbody-field">
+                  <span className="inbody-field-label">{label}</span>
+                  <div className="inbody-input-wrap">
+                    <input
+                      type="number" step="0.1" min="0" className="inbody-input"
+                      value={ib[key]}
+                      onChange={e => updateIb(key, e.target.value)}
+                      placeholder="0.0"
+                    />
+                    <span className="inbody-unit">{unit}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {fatPct !== null && (
+              <div className="inbody-fatpct-row">
+                <span>체지방률</span>
+                <strong className="inbody-fatpct-val">{fatPct.toFixed(1)}%</strong>
+                {blFatPct !== null && !isBaseline && (
+                  <DeltaTag d={diff(fatPct, blFatPct)} unit="%" goodDir="down" />
+                )}
+              </div>
+            )}
+
+            {!ib.photo && (
+              <label className="health-upload-label small">
+                <input type="file" accept="image/*" className="photo-input" onChange={handleInbodyPhoto} />
+                사진도 함께 올리기
+              </label>
+            )}
+          </div>
+        )}
+
+        {!showFields && !ib.photo && (
+          <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setShowFields(true)}>
+            수치만 입력
+          </button>
+        )}
+      </div>
+
+      {/* 공복혈당 */}
+      <div className="health-block">
+        <div className="health-block-title" style={{ color: '#22c55e' }}>공복혈당</div>
+        <div className="bs-row">
+          <input
+            type="number" className="bs-input"
+            value={bs} onChange={e => updateBs(e.target.value)}
+            placeholder="수치 입력"
+            min="0" max="500"
+          />
+          <span className="bs-unit">mg/dL</span>
+          {bsStatus && <span className={`bs-status ${bsStatus.cls}`}>{bsStatus.label}</span>}
+          {blBs != null && bs && !isBaseline && (
+            <DeltaTag d={diff(bs, blBs)} unit="" goodDir="down" />
+          )}
+        </div>
+      </div>
+
+      {/* 5/9 기준 비교 */}
+      {!isBaseline && hasBaselineData && (
+        <div className="health-compare">
+          <div className="compare-title">5/9 기준 비교</div>
+          <div className="compare-rows">
+            {bl.weight && ib.weight ? (
+              <div className="compare-row">
+                <span className="compare-label">체중</span>
+                <span className="compare-vals">{bl.weight} → <b>{ib.weight}</b> kg</span>
+                <DeltaTag d={diff(ib.weight, bl.weight)} unit="kg" goodDir="down" />
+              </div>
+            ) : null}
+            {bl.muscle && ib.muscle ? (
+              <div className="compare-row">
+                <span className="compare-label">근육량</span>
+                <span className="compare-vals">{bl.muscle} → <b>{ib.muscle}</b> kg</span>
+                <DeltaTag d={diff(ib.muscle, bl.muscle)} unit="kg" goodDir="up" />
+              </div>
+            ) : null}
+            {bl.fat && ib.fat ? (
+              <div className="compare-row">
+                <span className="compare-label">체지방</span>
+                <span className="compare-vals">{bl.fat} → <b>{ib.fat}</b> kg</span>
+                <DeltaTag d={diff(ib.fat, bl.fat)} unit="kg" goodDir="down" />
+              </div>
+            ) : null}
+            {blFatPct !== null && fatPct !== null ? (
+              <div className="compare-row">
+                <span className="compare-label">체지방률</span>
+                <span className="compare-vals">{blFatPct.toFixed(1)} → <b>{fatPct.toFixed(1)}</b> %</span>
+                <DeltaTag d={diff(fatPct, blFatPct)} unit="%" goodDir="down" />
+              </div>
+            ) : null}
+            {blBs != null && bs ? (
+              <div className="compare-row">
+                <span className="compare-label">공복혈당</span>
+                <span className="compare-vals">{blBs} → <b>{bs}</b> mg/dL</span>
+                <DeltaTag d={diff(bs, blBs)} unit="" goodDir="down" />
+              </div>
+            ) : null}
+            {!ib.weight && !bs && (
+              <p className="compare-empty">오늘 측정값을 입력하면 비교가 표시됩니다</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isBaseline && (
+        <p className="baseline-hint">이 날짜의 수치가 비교 기준점(5/9)으로 사용됩니다</p>
+      )}
+    </section>
+  )
+}
