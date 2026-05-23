@@ -114,6 +114,23 @@ h1 {
   letter-spacing: -0.5px;
 }
 
+.app-title-wrap {
+  text-align: center;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.app-title {
+  font-family: 'Pacifico', cursive;
+  font-size: 2.6rem;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
 .summary {
   font-size: 0.875rem;
   color: var(--text-muted);

@@ -416,11 +416,11 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
 function CalendarView({ user, onSelectDate, onLogout, onReview }) {
   return (
     <main className="container">
+      <div className="app-title-wrap">
+        <h1 className="app-title">Doing Doing</h1>
+      </div>
       <header>
-        <div className="header-left">
-          <h1>퀴니의 두잉두잉</h1>
-        </div>
-        <div className="header-right">
+        <div className="header-right" style={{ marginLeft: 'auto' }}>
           <button className="btn btn-ghost" onClick={onReview}>한달 리뷰</button>
           <span className="user-email">{user.email}</span>
           <button className="btn btn-ghost" onClick={onLogout}>로그아웃</button>
