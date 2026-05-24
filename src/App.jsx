@@ -3,20 +3,13 @@ import AddForm from './components/AddForm'
 import TodoList from './components/TodoList'
 import Calendar from './components/Calendar'
 import HabitItem from './components/HabitItem'
+import HabitManager from './components/HabitManager'
 import MonthlyReview from './components/MonthlyReview'
 import HealthRecord from './components/HealthRecord'
 import AuthPage from './pages/AuthPage'
 import { useAuth } from './hooks/useAuth'
 import { useHabits, clearLegacyData } from './hooks/useHabits'
 import { BLOB_EMOJIS, BlobFace } from './components/BlobEmoji'
-
-const HABIT_SECTIONS = [
-  { name: '건강측정', color: '#3b82f6', indices: [0, 1] },
-  { name: '식단',    color: '#22c55e', indices: [2, 4, 5] },
-  { name: '생활습관', color: '#a855f7', indices: [3] },
-  { name: '운동',    color: '#f97316', indices: [7, 8, 9] },
-  { name: '하루정리', color: '#14b8a6', indices: [6] },
-]
 
 
 async function compressImage(file) {
@@ -272,7 +265,7 @@ function ProgressBar({ total, done, label }) {
 
 function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
   const { todos, addTodo, deleteTodo, toggleTodo, updateTodo, clearDone } = useTodos(user.id, date)
-  const { habits, toggleHabit, checkHabit } = useHabits(user.id, date)
+  const { habits, defs, toggleHabit, checkHabit } = useHabits(user.id, date)
   const [emoji, setEmoji] = useLocalStorage(`emoji_${user.id}_${date}`, '')
   const [memo, setMemo] = useLocalStorage(`memo_${user.id}_${date}`, '')
   const [photo, setPhoto] = useLocalStorage(`photo_${user.id}_${date}`, '')
@@ -300,7 +293,6 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
           </div>
         </div>
         <div className="header-right">
-          <span className="user-email">{user.email}</span>
           <button className="btn btn-ghost" onClick={onLogout}>로그아웃</button>
         </div>
       </header>
@@ -329,19 +321,23 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
         </div>
         <ProgressBar total={habits.length} done={habitDone} label="루틴" />
         <div className="habit-sections-wrap">
-          {HABIT_SECTIONS.map(sec => (
-            <div key={sec.name} className="habit-sec-group">
-              <span className="habit-sec-label" style={{ color: sec.color }}>{sec.name}</span>
-              <ul className="habit-grid-2col">
-                {sec.indices.map(idx => (
-                  <HabitItem key={idx} habit={habits[idx]} onToggle={toggleHabit} compact />
-                ))}
-              </ul>
-              {sec.name === '운동' && (
-                <RunningRecord userId={user.id} dateStr={date} />
-              )}
-            </div>
-          ))}
+          {defs.sections.map(sec => {
+            const secHabits = habits.filter(h => h.sectionId === sec.id)
+            if (secHabits.length === 0) return null
+            return (
+              <div key={sec.id} className="habit-sec-group">
+                <span className="habit-sec-label" style={{ color: sec.color }}>{sec.name}</span>
+                <ul className="habit-grid-2col">
+                  {secHabits.map(h => (
+                    <HabitItem key={h.id} habit={h} onToggle={toggleHabit} compact />
+                  ))}
+                </ul>
+                {sec.id === 'sec_workout' && (
+                  <RunningRecord userId={user.id} dateStr={date} />
+                )}
+              </div>
+            )
+          })}
         </div>
       </section>
 
@@ -407,20 +403,22 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
   )
 }
 
-function CalendarView({ user, onSelectDate, onLogout, onReview }) {
+function CalendarView({ user, onSelectDate, onLogout, onReview, onManageHabits }) {
   return (
     <main className="container">
       <div className="app-title-wrap">
         <h1 className="app-title">Doing Doing</h1>
+        <BlobFace id="happy" size={50}/>
       </div>
-      <header>
-        <div className="header-right" style={{ marginLeft: 'auto' }}>
-          <button className="btn btn-ghost" onClick={onReview}>한달 리뷰</button>
-          <span className="user-email">{user.email}</span>
-          <button className="btn btn-ghost" onClick={onLogout}>로그아웃</button>
-        </div>
-      </header>
+      <div className="cal-header-nav">
+        <button className="btn btn-ghost" onClick={onReview}>한달 리뷰</button>
+        <button className="btn btn-ghost" onClick={onManageHabits}>루틴 관리</button>
+      </div>
       <Calendar userId={user.id} onSelectDate={onSelectDate} />
+      <div className="cal-footer-nav">
+        <span className="user-email">{user.email}</span>
+        <button className="btn btn-ghost" onClick={onLogout}>로그아웃</button>
+      </div>
     </main>
   )
 }
@@ -429,6 +427,7 @@ export default function App() {
   const { user, login, register, logout } = useAuth()
   const [selectedDate, setSelectedDate] = useState(null)
   const [view, setView] = useState('calendar')
+  const [habitMgrOpen, setHabitMgrOpen] = useState(false)
 
   useEffect(() => {
     if (user) clearLegacyData(user.id)
@@ -442,12 +441,18 @@ export default function App() {
 
   if (!selectedDate) {
     return (
-      <CalendarView
-        user={user}
-        onSelectDate={setSelectedDate}
-        onLogout={logout}
-        onReview={() => setView('review')}
-      />
+      <>
+        <CalendarView
+          user={user}
+          onSelectDate={setSelectedDate}
+          onLogout={logout}
+          onReview={() => setView('review')}
+          onManageHabits={() => setHabitMgrOpen(true)}
+        />
+        {habitMgrOpen && (
+          <HabitManager userId={user.id} onClose={() => setHabitMgrOpen(false)} />
+        )}
+      </>
     )
   }
 

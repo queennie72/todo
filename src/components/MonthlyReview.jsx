@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DAILY_HABITS } from '../hooks/useHabits'
+import { loadHabitDefs, OLD_INDEX_TO_ID } from '../lib/habitDefs'
 import { BLOB_EMOJIS, BlobFace } from './BlobEmoji'
 
 function loadLS(key) {
@@ -128,26 +128,29 @@ function HealthChartPopup({ userId, year, month, type, onClose }) {
 
 // ── 날짜 상세 팝업 ────────────────────────────────────────────
 
-const POPUP_SECTIONS = [
-  { name: '건강측정', color: '#3b82f6', indices: [0, 1] },
-  { name: '식단',    color: '#22c55e', indices: [2, 4, 5] },
-  { name: '생활습관', color: '#a855f7', indices: [3] },
-  { name: '운동',    color: '#f97316', indices: [7, 8, 9] },
-  { name: '하루정리', color: '#14b8a6', indices: [6] },
-]
+function loadHabitStates(userId, dateStr) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`habits_${userId}_${dateStr}`))
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) return saved
+    if (Array.isArray(saved)) {
+      const mapped = {}
+      OLD_INDEX_TO_ID.forEach((id, i) => { if (i < saved.length) mapped[id] = !!saved[i] })
+      return mapped
+    }
+  } catch {}
+  return {}
+}
 
 function DayPopup({ userId, dateStr, onClose }) {
   const [y, m, d] = dateStr.split('-')
   const label = `${y}년 ${Number(m)}월 ${Number(d)}일`
 
+  const [defs] = useState(() => loadHabitDefs(userId))
   const [todos, setTodosState] = useState(() => {
     const saved = loadLS(`todos_${userId}_${dateStr}`)
     return Array.isArray(saved) ? saved : []
   })
-  const [habits, setHabitsState] = useState(() => {
-    const saved = loadLS(`habits_${userId}_${dateStr}`)
-    return Array.isArray(saved) && saved.length === DAILY_HABITS.length ? saved : DAILY_HABITS.map(() => false)
-  })
+  const [habits, setHabitsState] = useState(() => loadHabitStates(userId, dateStr))
   const [emoji, setEmojiState] = useState(() => loadLS(`emoji_${userId}_${dateStr}`) || '')
   const [memo, setMemoState] = useState(() => loadLS(`memo_${userId}_${dateStr}`) || '')
   const [newTodo, setNewTodo] = useState('')
@@ -207,23 +210,27 @@ function DayPopup({ userId, dateStr, onClose }) {
           {/* 루틴 */}
           <div className="popup-section">
             <div className="popup-section-title">오늘의 루틴</div>
-            {POPUP_SECTIONS.map(sec => (
-              <div key={sec.name} className="popup-habit-group">
-                <span className="popup-habit-label" style={{ color: sec.color }}>{sec.name}</span>
-                <div className="popup-habit-chips">
-                  {sec.indices.map(idx => (
-                    <button
-                      key={idx}
-                      className={`popup-habit-chip${habits[idx] ? ' done' : ''}`}
-                      style={habits[idx] ? { borderColor: sec.color, background: sec.color + '20', color: sec.color } : {}}
-                      onClick={() => { const n = [...habits]; n[idx] = !n[idx]; setHabits(n) }}
-                    >
-                      {habits[idx] ? '✓ ' : ''}{DAILY_HABITS[idx]}
-                    </button>
-                  ))}
+            {defs.sections.map(sec => {
+              const secHabits = defs.habits.filter(h => h.sectionId === sec.id)
+              if (secHabits.length === 0) return null
+              return (
+                <div key={sec.id} className="popup-habit-group">
+                  <span className="popup-habit-label" style={{ color: sec.color }}>{sec.name}</span>
+                  <div className="popup-habit-chips">
+                    {secHabits.map(h => (
+                      <button
+                        key={h.id}
+                        className={`popup-habit-chip${habits[h.id] ? ' done' : ''}`}
+                        style={habits[h.id] ? { borderColor: sec.color, background: sec.color + '20', color: sec.color } : {}}
+                        onClick={() => setHabits({ ...habits, [h.id]: !habits[h.id] })}
+                      >
+                        {habits[h.id] ? '✓ ' : ''}{h.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* 감정 */}
@@ -263,23 +270,26 @@ function DayPopup({ userId, dateStr, onClose }) {
   )
 }
 
-// ── 공통 상수 ─────────────────────────────────────────────────
-const SECTIONS = [
-  { name: '건강측정', indices: [0, 1], color: '#3b82f6', light: '#bfdbfe' },
-  { name: '식단',    indices: [2, 4, 5], color: '#22c55e', light: '#bbf7d0' },
-  { name: '생활습관', indices: [3], color: '#a855f7', light: '#e9d5ff' },
-  { name: '운동',    indices: [7, 8, 9], color: '#f97316', light: '#fed7aa' },
-  { name: '하루정리', indices: [6], color: '#14b8a6', light: '#99f6e4' },
-]
-
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
-function getHabitStates(userId, dateStr) {
+const SECTION_LIGHT = {
+  '#3b82f6': '#bfdbfe', '#22c55e': '#bbf7d0', '#a855f7': '#e9d5ff',
+  '#f97316': '#fed7aa', '#14b8a6': '#99f6e4', '#ec4899': '#fce7f3',
+  '#f59e0b': '#fef3c7', '#ef4444': '#fee2e2', '#6366f1': '#e0e7ff',
+  '#06b6d4': '#cffafe',
+}
+
+function getHabitStatesObj(userId, dateStr) {
   try {
     const saved = JSON.parse(localStorage.getItem(`habits_${userId}_${dateStr}`))
-    if (Array.isArray(saved)) return saved
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) return saved
+    if (Array.isArray(saved)) {
+      const mapped = {}
+      OLD_INDEX_TO_ID.forEach((id, i) => { if (i < saved.length) mapped[id] = !!saved[i] })
+      return mapped
+    }
   } catch {}
-  return []
+  return {}
 }
 
 function getDayPhoto(userId, dateStr) {
@@ -449,6 +459,7 @@ export default function MonthlyReview({ userId, onBack }) {
   const [month, setMonth] = useState(today.getMonth())
   const [chartPopup, setChartPopup] = useState(null)
   const [popupDate, setPopupDate] = useState(null)
+  const [defs] = useState(() => loadHabitDefs(userId))
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
   const cells = buildCells(year, month)
@@ -462,11 +473,11 @@ export default function MonthlyReview({ userId, onBack }) {
     if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1)
   }
 
-  function getSectionRatio(indices, day) {
+  function getSectionRatio(secHabits, day) {
+    if (secHabits.length === 0) return 0
     const dateStr = toDateStr(year, month, day)
-    const states = getHabitStates(userId, dateStr)
-    if (states.length === 0) return 0
-    return indices.filter(i => states[i]).length / indices.length
+    const states = getHabitStatesObj(userId, dateStr)
+    return secHabits.filter(h => states[h.id]).length / secHabits.length
   }
 
   return (
@@ -496,20 +507,22 @@ export default function MonthlyReview({ userId, onBack }) {
         todayStr={todayStr} onSelectDate={setPopupDate}
       />
 
-      {/* 5섹션 루틴 히트맵 */}
-      {SECTIONS.map(section => {
+      {/* 섹션별 루틴 히트맵 */}
+      {defs.sections.map(section => {
+        const secHabits = defs.habits.filter(h => h.sectionId === section.id)
+        const light = SECTION_LIGHT[section.color] || '#f1f5f9'
         const pastDays = allDays.filter(d => toDateStr(year, month, d) <= todayStr)
-        const doneDays = pastDays.filter(d => getSectionRatio(section.indices, d) === 1)
+        const doneDays = pastDays.filter(d => getSectionRatio(secHabits, d) === 1)
         const pct = pastDays.length > 0 ? Math.round((doneDays.length / pastDays.length) * 100) : 0
 
         return (
-          <div key={section.name} className="review-card">
+          <div key={section.id} className="review-card">
             <div className="review-card-header">
               <div className="review-card-left">
                 <span className="review-color-dot" style={{ background: section.color }} />
                 <div>
                   <div className="review-card-title">{section.name}</div>
-                  <div className="review-card-habits">{section.indices.map(i => DAILY_HABITS[i]).join(' · ')}</div>
+                  <div className="review-card-habits">{secHabits.map(h => h.name).join(' · ')}</div>
                 </div>
               </div>
               <div className="review-card-right">
@@ -527,8 +540,8 @@ export default function MonthlyReview({ userId, onBack }) {
                 const dateStr = toDateStr(year, month, day)
                 const isFuture = dateStr > todayStr
                 const isToday = dateStr === todayStr
-                const ratio = getSectionRatio(section.indices, day)
-                const bg = isFuture || ratio === 0 ? 'transparent' : ratio === 1 ? section.color : section.light
+                const ratio = getSectionRatio(secHabits, day)
+                const bg = isFuture || ratio === 0 ? 'transparent' : ratio === 1 ? section.color : light
                 const numColor = (!isFuture && ratio === 1) ? '#fff' : undefined
 
                 return (
@@ -554,7 +567,7 @@ export default function MonthlyReview({ userId, onBack }) {
               <div className="review-progress-fill" style={{ width: `${pct}%`, background: section.color }} />
             </div>
 
-            {section.name === '건강측정' && (
+            {section.id === 'sec_health' && (
               <div className="health-chart-btns">
                 <button className="health-chart-btn inbody-btn" onClick={() => setChartPopup('inbody')}>📊 인바디 추이</button>
                 <button className="health-chart-btn bloodsugar-btn" onClick={() => setChartPopup('bloodsugar')}>📊 공복혈당 추이</button>

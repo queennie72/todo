@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react'
-
-export const DAILY_HABITS = [
-  '인바디 측정',
-  '공복혈당 측정',
-  '단백질 95g 섭취',
-  '애플워치 움직이기 링 완성',
-  '하루 물 2L 마시기',
-  '영양제 챙겨 먹기',
-  '오늘 하루 리뷰하기',
-  'F45출석',
-  'RUN',
-  '그외운동',
-]
+import { loadHabitDefs, OLD_INDEX_TO_ID } from '../lib/habitDefs'
 
 function habitKey(userId, dateStr) {
   return `habits_${userId}_${dateStr}`
@@ -20,45 +8,47 @@ function habitKey(userId, dateStr) {
 function loadStates(userId, dateStr) {
   try {
     const saved = JSON.parse(localStorage.getItem(habitKey(userId, dateStr)))
-    if (Array.isArray(saved) && saved.length === DAILY_HABITS.length) return saved
-  } catch { /* ignore */ }
-  return DAILY_HABITS.map(() => false)
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) return saved
+    if (Array.isArray(saved)) {
+      const migrated = {}
+      saved.forEach((v, i) => { if (OLD_INDEX_TO_ID[i]) migrated[OLD_INDEX_TO_ID[i]] = !!v })
+      return migrated
+    }
+  } catch {}
+  return {}
 }
 
 export function useHabits(userId, dateStr) {
+  const [defs, setDefs] = useState(() => loadHabitDefs(userId))
   const [states, setStates] = useState(() => loadStates(userId, dateStr))
 
-  useEffect(() => {
-    setStates(loadStates(userId, dateStr))
-  }, [userId, dateStr])
-
+  useEffect(() => { setDefs(loadHabitDefs(userId)) }, [userId])
+  useEffect(() => { setStates(loadStates(userId, dateStr)) }, [userId, dateStr])
   useEffect(() => {
     localStorage.setItem(habitKey(userId, dateStr), JSON.stringify(states))
   }, [states, userId, dateStr])
 
-  const habits = DAILY_HABITS.map((text, i) => ({ id: i, text, done: states[i] }))
+  const habits = defs.habits.map(h => ({ ...h, text: h.name, done: !!states[h.id] }))
 
-  const toggleHabit = (id) =>
-    setStates(prev => prev.map((d, i) => i === id ? !d : d))
+  const toggleHabit = (id) => setStates(prev => ({ ...prev, [id]: !prev[id] }))
+  const checkHabit = (id) => setStates(prev => ({ ...prev, [id]: true }))
 
-  const checkHabit = (id) =>
-    setStates(prev => prev.map((d, i) => i === id ? true : d))
-
-  return { habits, toggleHabit, checkHabit }
+  return { habits, defs, toggleHabit, checkHabit }
 }
 
-// 달력용 — 훅 없이 직접 읽기
 export function getHabitStats(userId, dateStr) {
+  const defs = loadHabitDefs(userId)
+  const total = defs.habits.length
   try {
     const saved = JSON.parse(localStorage.getItem(habitKey(userId, dateStr)))
-    if (Array.isArray(saved)) {
-      return { done: saved.filter(Boolean).length, total: DAILY_HABITS.length }
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return { done: Object.values(saved).filter(Boolean).length, total }
     }
-  } catch { /* ignore */ }
-  return { done: 0, total: DAILY_HABITS.length }
+    if (Array.isArray(saved)) return { done: saved.filter(Boolean).length, total }
+  } catch {}
+  return { done: 0, total }
 }
 
-// 기존 todos_* 데이터 초기화 (1회 마이그레이션)
 export function clearLegacyData(userId) {
   const flagKey = `reset_v4_${userId}`
   if (localStorage.getItem(flagKey)) return

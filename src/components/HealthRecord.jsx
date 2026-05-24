@@ -97,14 +97,14 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
     const next = { ...ib, [field]: value }
     setIb(next)
     saveLS(ibKey, next)
-    if (next.weight || next.muscle || next.fat) onHealthCheck?.(0)
+    if (next.weight || next.muscle || next.fat) onHealthCheck?.('hab_inbody')
   }
 
   function updateBs(value) {
     setBs(value)
     if (value !== '') {
       saveLS(bsKey, parseFloat(value))
-      onHealthCheck?.(1)
+      onHealthCheck?.('hab_blood')
     } else {
       localStorage.removeItem(bsKey)
     }
@@ -139,7 +139,7 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
         const updated = { ...photoState, ...extracted }
         setIb(updated)
         saveLS(ibKey, updated)
-        onHealthCheck?.(0)
+        onHealthCheck?.('hab_inbody')
         setScanMsg('자동 인식 완료 — 수치를 확인해 주세요')
       } else {
         setScanMsg('수치를 인식하지 못했습니다. 직접 입력해 주세요')
