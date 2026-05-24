@@ -1053,6 +1053,74 @@ h1 {
   font-size: 0.5rem;
 }
 
+/* Mood calendar in monthly review */
+.mood-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.mood-cal-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  overflow: visible;
+  position: relative;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.12s;
+}
+
+.mood-cal-cell.empty {
+  border: none;
+  background: transparent;
+}
+
+.mood-cal-cell.future {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.mood-cal-cell.today {
+  border-color: var(--accent);
+  border-width: 2px;
+}
+
+.mood-cal-cell.has-mood {
+  border-color: transparent;
+  background: transparent;
+}
+
+.mood-cal-cell.has-mood:hover {
+  opacity: 0.8;
+}
+
+.mood-cal-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.mood-cal-day {
+  font-size: 0.575rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.mood-cal-day-overlay {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: rgba(0,0,0,0.45);
+  line-height: 1;
+  pointer-events: none;
+}
+
 /* Photo lightbox */
 .photo-lightbox {
   position: fixed;

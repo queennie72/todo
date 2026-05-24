@@ -398,6 +398,50 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
   )
 }
 
+// ── 감정 달력 ─────────────────────────────────────────────────
+function MoodCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
+  return (
+    <div className="review-card">
+      <div className="review-card-header">
+        <div className="review-card-left">
+          <span className="review-color-dot" style={{ background: '#a855f7' }} />
+          <div>
+            <div className="review-card-title">이달의 감정</div>
+            <div className="review-card-habits">날짜 클릭 시 감정 입력</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mood-cal-grid">
+        {WEEKDAYS.map((d, i) => (
+          <div key={d} className="review-weekday" style={{ color: i === 0 ? '#ef4444' : i === 6 ? '#3b82f6' : undefined }}>{d}</div>
+        ))}
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e-${i}`} className="mood-cal-cell empty" />
+          const dateStr = toDateStr(year, month, day)
+          const emojiId = loadLS(`emoji_${userId}_${dateStr}`)
+          const isFuture = dateStr > todayStr
+          const isToday = dateStr === todayStr
+          return (
+            <div
+              key={dateStr}
+              className={`mood-cal-cell${isToday ? ' today' : ''}${isFuture ? ' future' : ''}${emojiId ? ' has-mood' : ''}`}
+              onClick={() => { if (!isFuture) onSelectDate(dateStr) }}
+              style={{ cursor: isFuture ? 'default' : 'pointer' }}
+            >
+              {emojiId
+                ? <BlobFace id={emojiId} size={36} />
+                : <span className="mood-cal-day">{day}</span>
+              }
+              {emojiId && <span className="mood-cal-day-overlay">{day}</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
 export default function MonthlyReview({ userId, onBack }) {
   const today = new Date()
@@ -442,6 +486,12 @@ export default function MonthlyReview({ userId, onBack }) {
 
       {/* 사진 달력 */}
       <PhotoCalendar
+        userId={userId} year={year} month={month} cells={cells}
+        todayStr={todayStr} onSelectDate={setPopupDate}
+      />
+
+      {/* 감정 달력 */}
+      <MoodCalendar
         userId={userId} year={year} month={month} cells={cells}
         todayStr={todayStr} onSelectDate={setPopupDate}
       />
