@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DAILY_HABITS } from '../hooks/useHabits'
+import { BLOB_EMOJIS, BlobFace } from './BlobEmoji'
 
 function loadLS(key) {
   try { return JSON.parse(localStorage.getItem(key)) } catch { return null }
@@ -126,14 +127,6 @@ function HealthChartPopup({ userId, year, month, type, onClose }) {
 }
 
 // ── 날짜 상세 팝업 ────────────────────────────────────────────
-const EMOJIS = [
-  { emoji: '😊', label: '행복' }, { emoji: '🥰', label: '사랑' }, { emoji: '🤩', label: '신남' },
-  { emoji: '😎', label: '멋짐' }, { emoji: '🥳', label: '파티' }, { emoji: '😄', label: '기쁨' },
-  { emoji: '🤗', label: '따뜻함' }, { emoji: '😌', label: '평온' }, { emoji: '🙂', label: '만족' },
-  { emoji: '😴', label: '졸림' }, { emoji: '😪', label: '피곤' }, { emoji: '🥺', label: '슬픔' },
-  { emoji: '😢', label: '눈물' }, { emoji: '😭', label: '통곡' }, { emoji: '😅', label: '당황' },
-  { emoji: '😤', label: '답답' }, { emoji: '😡', label: '화남' }, { emoji: '🤔', label: '고민' },
-]
 
 const POPUP_SECTIONS = [
   { name: '건강측정', color: '#3b82f6', indices: [0, 1] },
@@ -235,15 +228,20 @@ function DayPopup({ userId, dateStr, onClose }) {
 
           {/* 감정 */}
           <div className="popup-section">
-            <div className="popup-section-title">오늘의 감정 {emoji}</div>
-            <div className="emoji-grid">
-              {EMOJIS.map(({ emoji: em, label: lb }) => (
+            <div className="popup-section-title">
+              오늘의 감정{emoji && <span style={{marginLeft:6,verticalAlign:'middle'}}><BlobFace id={emoji} size={24}/></span>}
+            </div>
+            <div className="emoji-grid blob-grid">
+              {BLOB_EMOJIS.map(({ id, label: lb }) => (
                 <button
-                  key={em}
-                  className={`emoji-btn${emoji === em ? ' selected' : ''}`}
-                  onClick={() => setEmoji(emoji === em ? '' : em)}
+                  key={id}
+                  className={`emoji-btn blob-btn${emoji === id ? ' selected' : ''}`}
+                  onClick={() => setEmoji(emoji === id ? '' : id)}
                   title={lb}
-                >{em}</button>
+                >
+                  <BlobFace id={id} size={40}/>
+                  <span className="blob-label">{lb}</span>
+                </button>
               ))}
             </div>
           </div>

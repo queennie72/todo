@@ -8,6 +8,7 @@ import HealthRecord from './components/HealthRecord'
 import AuthPage from './pages/AuthPage'
 import { useAuth } from './hooks/useAuth'
 import { useHabits, clearLegacyData } from './hooks/useHabits'
+import { BLOB_EMOJIS, BlobFace } from './components/BlobEmoji'
 
 const HABIT_SECTIONS = [
   { name: '건강측정', color: '#3b82f6', indices: [0, 1] },
@@ -17,14 +18,6 @@ const HABIT_SECTIONS = [
   { name: '하루정리', color: '#14b8a6', indices: [6] },
 ]
 
-const EMOJIS = [
-  { emoji: '😊', label: '행복' },  { emoji: '🥰', label: '사랑' },  { emoji: '🤩', label: '신남' },
-  { emoji: '😎', label: '멋짐' },  { emoji: '🥳', label: '파티' },  { emoji: '😄', label: '기쁨' },
-  { emoji: '🤗', label: '따뜻함' }, { emoji: '😌', label: '평온' },  { emoji: '🙂', label: '만족' },
-  { emoji: '😴', label: '졸림' },  { emoji: '😪', label: '피곤' },  { emoji: '🥺', label: '슬픔' },
-  { emoji: '😢', label: '눈물' },  { emoji: '😭', label: '통곡' },  { emoji: '😅', label: '당황' },
-  { emoji: '😤', label: '답답' },  { emoji: '😡', label: '화남' },  { emoji: '🤔', label: '고민' },
-]
 
 async function compressImage(file) {
   return new Promise((resolve) => {
@@ -359,18 +352,19 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
       <section className="section">
         <div className="section-header">
           <span className="section-title">오늘의 감정</span>
-          {emoji && <span className="emoji-chosen">{emoji}</span>}
+          {emoji && <span className="emoji-chosen"><BlobFace id={emoji} size={30}/></span>}
         </div>
-        <div className="emoji-grid">
-          {EMOJIS.map(({ emoji: em, label }) => (
+        <div className="emoji-grid blob-grid">
+          {BLOB_EMOJIS.map(({ id, label }) => (
             <button
-              key={em}
-              className={`emoji-btn${emoji === em ? ' selected' : ''}`}
-              onClick={() => setEmoji(emoji === em ? '' : em)}
+              key={id}
+              className={`emoji-btn blob-btn${emoji === id ? ' selected' : ''}`}
+              onClick={() => setEmoji(emoji === id ? '' : id)}
               title={label}
               aria-label={label}
             >
-              {em}
+              <BlobFace id={id} size={46}/>
+              <span className="blob-label">{label}</span>
             </button>
           ))}
         </div>
