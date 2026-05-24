@@ -197,6 +197,23 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
   const hasData = MEALS.some(({ id }) => { const d = meals[id]; return d && (d.calories || d.protein) })
   const meal = getMeal(activeMeal)
 
+  // 탄수화물·단백질·지방 → 칼로리 환산 비율 (4/4/9 kcal/g)
+  const macroCal = {
+    carbs:   (parseFloat(totals.carbs)   || 0) * 4,
+    protein: (parseFloat(totals.protein) || 0) * 4,
+    fat:     (parseFloat(totals.fat)     || 0) * 9,
+  }
+  const macroTotal = macroCal.carbs + macroCal.protein + macroCal.fat
+  const macroPct = macroTotal > 0
+    ? { carbs: macroCal.carbs / macroTotal * 100, protein: macroCal.protein / macroTotal * 100, fat: macroCal.fat / macroTotal * 100 }
+    : { carbs: 0, protein: 0, fat: 0 }
+  const MACROS = [
+    { key: 'carbs',   label: '탄수화물', short: '탄', color: '#818cf8', g: totals.carbs.toFixed(0) },
+    { key: 'protein', label: '단백질',   short: '단', color: '#34d399', g: totals.protein.toFixed(0) },
+    { key: 'fat',     label: '지방',     short: '지', color: '#fb923c', g: totals.fat.toFixed(0) },
+  ]
+  const maxMealCal = Math.max(...MEALS.map(m => parseFloat(meals[m.id]?.calories) || 0), 1)
+
   return (
     <div className="diet-record">
       <button className={`diet-toggle${hasData ? ' has-data' : ''}`} onClick={() => setOpen(v => !v)}>
@@ -281,26 +298,58 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
             ))}
           </div>
 
-          {/* 오늘 합계 */}
+          {/* 오늘 합계 카드 */}
           {hasData && (
-            <div className="diet-totals">
-              <span className="diet-totals-title">오늘 합계</span>
-              <div className="diet-totals-grid">
-                {[
-                  { label: '칼로리',  val: Math.round(totals.calories), unit: 'kcal', ok: false },
-                  { label: '탄수화물', val: totals.carbs.toFixed(0),    unit: 'g',    ok: false },
-                  { label: '단백질',  val: totals.protein.toFixed(0),   unit: 'g',    ok: totals.protein >= 95 },
-                  { label: '지방',    val: totals.fat.toFixed(0),       unit: 'g',    ok: false },
-                ].map(({ label, val, unit, ok }) => (
-                  <div key={label} className={`diet-total-cell${ok ? ' protein-ok' : ''}`}>
-                    <span className="diet-total-label">{label}</span>
-                    <span className="diet-total-val">{val}<span className="diet-total-unit">{unit}</span></span>
-                  </div>
-                ))}
+            <div className="diet-summary-card">
+
+              {/* 총 칼로리 */}
+              <div className="diet-cal-row">
+                <div>
+                  <span className="diet-cal-num">{Math.round(totals.calories).toLocaleString()}</span>
+                  <span className="diet-cal-unit">kcal 먹었어요</span>
+                </div>
+                {totals.protein >= 95 && (
+                  <span className="diet-protein-badge">🎉 단백질 달성</span>
+                )}
               </div>
-              {totals.protein >= 95 && (
-                <div className="diet-protein-badge">🎉 단백질 95g 달성!</div>
+
+              {/* 탄·단·지 행 */}
+              {macroTotal > 0 && (
+                <div className="diet-macro-rows">
+                  {MACROS.map(m => (
+                    <div key={m.key} className="diet-macro-row">
+                      <span className="diet-macro-dot" style={{ background: m.color }} />
+                      <span className="diet-macro-short">{m.short}</span>
+                      <div className="diet-macro-bar-track">
+                        <div className="diet-macro-bar-fill"
+                          style={{ width: `${macroPct[m.key].toFixed(1)}%`, background: m.color }} />
+                      </div>
+                      <span className="diet-macro-g">{m.g}g</span>
+                      <span className="diet-macro-pct">{macroPct[m.key].toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              {/* 끼니별 사진 + 칼로리 */}
+              <div className="diet-meal-cards">
+                {MEALS.map(m => {
+                  const cal = parseFloat(meals[m.id]?.calories) || 0
+                  const photo = meals[m.id]?.photo || ''
+                  if (!cal && !photo) return null
+                  return (
+                    <div key={m.id} className="diet-meal-card">
+                      {photo
+                        ? <img src={photo} alt={m.label} className="diet-meal-thumb" />
+                        : <div className="diet-meal-thumb-empty" />
+                      }
+                      <span className="diet-meal-card-label">{m.label}</span>
+                      <span className="diet-meal-card-cal">{Math.round(cal)}<span className="diet-meal-card-unit">kcal</span></span>
+                    </div>
+                  )
+                })}
+              </div>
+
             </div>
           )}
 
