@@ -2303,50 +2303,6 @@ h1 {
   gap: 0.625rem;
 }
 
-.diet-tabs {
-  display: flex;
-  gap: 0.375rem;
-}
-
-.diet-tab {
-  flex: 1;
-  padding: 0.35rem 0.25rem;
-  border: 1.5px solid #bbf7d0;
-  border-radius: 8px;
-  background: transparent;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #86efac;
-  cursor: pointer;
-  position: relative;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.diet-tab.active {
-  border-color: #22c55e;
-  background: #22c55e;
-  color: #fff;
-}
-
-.diet-tab.filled:not(.active) {
-  border-color: #4ade80;
-  color: #16a34a;
-}
-
-.diet-tab-dot {
-  position: absolute;
-  top: 3px;
-  right: 4px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #22c55e;
-}
-
-.diet-tab.active .diet-tab-dot {
-  background: #fff;
-}
-
 .diet-upload-label {
   display: flex;
   flex-direction: column;
@@ -2400,56 +2356,6 @@ h1 {
   gap: 0.5rem;
 }
 
-.diet-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-}
-
-.diet-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.diet-field-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #15803d;
-}
-
-.diet-input-wrap {
-  display: flex;
-  align-items: center;
-  border: 1px solid #bbf7d0;
-  border-radius: 6px;
-  overflow: hidden;
-  background: #fff;
-}
-
-.diet-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  padding: 0.35rem 0.375rem;
-  font-size: 0.875rem;
-  background: transparent;
-  color: var(--text);
-  min-width: 0;
-}
-
-.diet-input:focus {
-  border-color: #22c55e;
-}
-
-.diet-unit {
-  font-size: 0.7rem;
-  color: #4ade80;
-  padding: 0 0.375rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 /* ── 식단 합계 카드 (Pillyze 스타일) ── */
 .diet-summary-card {
   border-top: 1px dashed #bbf7d0;
@@ -2466,6 +2372,12 @@ h1 {
   gap: 0.5rem;
 }
 
+.diet-cal-nums {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+
 .diet-cal-num {
   font-size: 1.75rem;
   font-weight: 800;
@@ -2474,11 +2386,46 @@ h1 {
   line-height: 1;
 }
 
+.diet-cal-slash {
+  font-size: 1rem;
+  color: #86efac;
+  margin: 0 0.15rem;
+}
+
+.diet-cal-goal {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #4ade80;
+}
+
 .diet-cal-unit {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: #4ade80;
-  margin-left: 0.25rem;
+  margin-left: 0.2rem;
+}
+
+/* 칼로리 목표 달성 바 */
+.diet-goal-bar-track {
+  height: 8px;
+  background: #d1fae5;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.diet-goal-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #22c55e);
+  border-radius: 99px;
+  transition: width 0.5s ease;
+  max-width: 100%;
+}
+
+.diet-goal-pct-label {
+  font-size: 0.72rem;
+  color: #4ade80;
+  font-weight: 600;
+  text-align: right;
 }
 
 .diet-protein-badge {
@@ -2512,11 +2459,11 @@ h1 {
   flex-shrink: 0;
 }
 
-.diet-macro-short {
-  font-size: 0.8rem;
-  font-weight: 700;
+.diet-macro-label {
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text);
-  width: 1.1rem;
+  width: 3.5rem;
   flex-shrink: 0;
 }
 
@@ -2543,6 +2490,14 @@ h1 {
   flex-shrink: 0;
 }
 
+.diet-macro-kcal {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  width: 3.5rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 .diet-macro-pct {
   font-size: 0.75rem;
   font-weight: 600;
@@ -2550,57 +2505,6 @@ h1 {
   width: 2.25rem;
   text-align: right;
   flex-shrink: 0;
-}
-
-/* 끼니별 카드 */
-.diet-meal-cards {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.diet-meal-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  flex: 1;
-  min-width: 64px;
-}
-
-.diet-meal-thumb {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #f0fdf4;
-  display: block;
-}
-
-.diet-meal-thumb-empty {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  background: #d1fae5;
-}
-
-.diet-meal-card-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #4ade80;
-}
-
-.diet-meal-card-cal {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #15803d;
-}
-
-.diet-meal-card-unit {
-  font-size: 0.62rem;
-  font-weight: 400;
-  color: #4ade80;
-  margin-left: 1px;
 }
 
 /* ── 루틴 관리 모달 ── */
