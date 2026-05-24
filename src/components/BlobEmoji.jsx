@@ -8,7 +8,7 @@ export const BLOB_EMOJIS = [
   { id: 'worried', label: '걱정',   color: '#C0A9C5' },
   { id: 'cool',    label: '무감',   color: '#4C6699' },
   { id: 'okay',    label: '괜찮아', color: '#6AC983' },
-  { id: 'excited', label: '신남',   color: '#EA5E66' },
+  { id: 'excited', label: '짜증',   color: '#EA5E66' },
 ]
 
 export function BlobFace({ id, size = 52 }) {
