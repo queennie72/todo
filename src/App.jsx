@@ -4,6 +4,7 @@ import TodoList from './components/TodoList'
 import Calendar from './components/Calendar'
 import HabitItem from './components/HabitItem'
 import HabitManager from './components/HabitManager'
+import DietRecord from './components/DietRecord'
 import MonthlyReview from './components/MonthlyReview'
 import HealthRecord from './components/HealthRecord'
 import AuthPage from './pages/AuthPage'
@@ -334,6 +335,9 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
                 </ul>
                 {sec.id === 'sec_workout' && (
                   <RunningRecord userId={user.id} dateStr={date} />
+                )}
+                {sec.id === 'sec_diet' && (
+                  <DietRecord userId={user.id} dateStr={date} onProteinCheck={checkHabit} />
                 )}
               </div>
             )
