@@ -320,24 +320,23 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
           {hasData && (
             <div className="diet-summary-card">
 
-              {/* 총 칼로리 vs 목표 */}
+              {/* 총섭취 1737/1300 */}
               <div className="diet-cal-row">
                 <div className="diet-cal-nums">
-                  <span className="diet-cal-num">{Math.round(cal).toLocaleString()}</span>
-                  <span className="diet-cal-slash"> / </span>
-                  <span className="diet-cal-goal">{Math.round(goal).toLocaleString()}</span>
-                  <span className="diet-cal-unit"> kcal</span>
+                  <span className="diet-cal-label-text">총섭취</span>
+                  <span className="diet-cal-num">{Math.round(cal)}</span>
+                  <span className="diet-cal-slash">/</span>
+                  <span className="diet-cal-goal">{Math.round(goal)}</span>
                 </div>
                 {protein >= 95 && <span className="diet-protein-badge">🎉 단백질 달성</span>}
               </div>
 
-              {/* 칼로리 목표 달성 바 */}
+              {/* 칼로리 게이지 바 */}
               <div className="diet-goal-bar-track">
                 <div className="diet-goal-bar-fill" style={{ width: `${calPct.toFixed(1)}%` }} />
               </div>
-              <div className="diet-goal-pct-label">{calPct.toFixed(0)}% 섭취</div>
 
-              {/* 탄·단·지: 탄 92/163g  21% */}
+              {/* 탄수화물 21% 92g */}
               {macroTotal > 0 && (
                 <div className="diet-macro-rows">
                   {MACROS.map(m => {
@@ -350,6 +349,9 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
                       <div key={m.key} className="diet-macro-row">
                         <span className="diet-macro-dot" style={{ background: m.color }} />
                         <span className="diet-macro-label">{m.label}</span>
+                        <span className="diet-macro-pct" style={{ color: m.color }}>
+                          {macroPct[m.key].toFixed(0)}%
+                        </span>
                         <div className="diet-macro-bar-track">
                           <div className="diet-macro-bar-fill"
                             style={{ width: `${barPct.toFixed(1)}%`, background: m.color }} />
@@ -357,7 +359,6 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
                         <span className="diet-macro-g">
                           {Math.round(g)}{gGoal > 0 ? `/${Math.round(gGoal)}` : ''}g
                         </span>
-                        <span className="diet-macro-pct">{macroPct[m.key].toFixed(0)}%</span>
                       </div>
                     )
                   })}

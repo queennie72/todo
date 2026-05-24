@@ -2375,7 +2375,14 @@ h1 {
 .diet-cal-nums {
   display: flex;
   align-items: baseline;
-  gap: 0;
+  gap: 0.3rem;
+}
+
+.diet-cal-label-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4ade80;
+  margin-right: 0.1rem;
 }
 
 .diet-cal-num {
@@ -2387,9 +2394,9 @@ h1 {
 }
 
 .diet-cal-slash {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #86efac;
-  margin: 0 0.15rem;
+  margin: 0 0.05rem;
 }
 
 .diet-cal-goal {
@@ -2499,10 +2506,9 @@ h1 {
 }
 
 .diet-macro-pct {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  width: 2.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  width: 2.5rem;
   text-align: right;
   flex-shrink: 0;
 }
