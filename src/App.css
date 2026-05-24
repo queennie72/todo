@@ -2507,6 +2507,39 @@ h1 {
   flex-shrink: 0;
 }
 
+/* 끼니별 칼로리 칩 */
+.diet-meal-cal-row {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+  border-top: 1px dashed #bbf7d0;
+}
+
+.diet-meal-cal-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  flex: 1;
+  min-width: 60px;
+}
+
+.diet-meal-cal-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.diet-meal-cal-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #15803d;
+}
+
 /* ── 루틴 관리 모달 ── */
 .hm-overlay {
   position: fixed;

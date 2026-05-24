@@ -21,10 +21,20 @@ function firstMatch(t, patterns) {
   return null
 }
 
+// 필라이즈 형식: "탄 92/163g 21%" 또는 "탄수화물 92/163g"
+function extractSlash(t, patterns) {
+  for (const pat of patterns) {
+    const m = t.match(pat)
+    if (m) return { consumed: m[1], goalG: m[2] }
+  }
+  return null
+}
+
 function extractDayNutrition(text) {
   const t = stripCommas(text)
   const result = {}
 
+  // 칼로리: "1234kcal" 또는 "칼로리 1234"
   const cal = firstMatch(t, [
     /(?:총|오늘|합계|섭취량?)\s*(?:칼로리|열량)[^\d]{0,30}(\d{3,5})/i,
     /(?:칼로리|열량|에너지)[^\d]{0,50}(\d{3,5})/,
@@ -36,24 +46,45 @@ function extractDayNutrition(text) {
     /기준[^\d]{0,30}(\d{3,5})/,
     /기본[^\d]{0,30}(\d{3,5})/,
   ])
-  const carbs = firstMatch(t, [
-    /탄수화물[^\d]{0,50}(\d{1,4}(?:\.\d{1,2})?)/,
-    /탄\s{0,3}(\d{1,4}(?:\.\d{1,2})?)\s*g/,
+
+  // 필라이즈 "탄 92/163g" 형식 우선, 없으면 단순 숫자
+  const carbsS = extractSlash(t, [
+    /탄수화물\s+(\d{1,4})\/(\d{1,4})g/,
+    /탄\s{0,3}(\d{1,4})\/(\d{1,4})g/,
   ])
-  const protein = firstMatch(t, [
-    /단백질[^\d]{0,50}(\d{1,3}(?:\.\d{1,2})?)/,
-    /단\s{0,3}(\d{1,3}(?:\.\d{1,2})?)\s*g/,
+  const proteinS = extractSlash(t, [
+    /단백질\s+(\d{1,3})\/(\d{1,3})g/,
+    /단\s{0,3}(\d{1,3})\/(\d{1,3})g/,
   ])
-  const fat = firstMatch(t, [
-    /지방[^\d]{0,50}(\d{1,3}(?:\.\d{1,2})?)/,
-    /지\s{0,3}(\d{1,3}(?:\.\d{1,2})?)\s*g/,
+  const fatS = extractSlash(t, [
+    /지방\s+(\d{1,3})\/(\d{1,3})g/,
+    /지\s{0,3}(\d{1,3})\/(\d{1,3})g/,
   ])
 
-  if (cal)     result.calories = cal
-  if (goal)    result.goal     = goal
-  if (carbs)   result.carbs    = carbs
-  if (protein) result.protein  = protein
-  if (fat)     result.fat      = fat
+  const carbs   = carbsS?.consumed   ?? firstMatch(t, [/탄수화물[^\d]{0,50}(\d{1,4}(?:\.\d{1,2})?)/, /탄\s{0,3}(\d{1,4}(?:\.\d{1,2})?)\s*g/])
+  const protein = proteinS?.consumed ?? firstMatch(t, [/단백질[^\d]{0,50}(\d{1,3}(?:\.\d{1,2})?)/, /단\s{0,3}(\d{1,3}(?:\.\d{1,2})?)\s*g/])
+  const fat     = fatS?.consumed     ?? firstMatch(t, [/지방[^\d]{0,50}(\d{1,3}(?:\.\d{1,2})?)/, /지\s{0,3}(\d{1,3}(?:\.\d{1,2})?)\s*g/])
+
+  // 끼니별 칼로리: "아침 350kcal", "점심 775kcal" 등
+  const mealPats = [
+    { key: 'breakfastCal', re: /아침[^\d]{0,15}(\d{2,4})\s*(?:kcal|㎉)?/i },
+    { key: 'lunchCal',     re: /점심[^\d]{0,15}(\d{2,4})\s*(?:kcal|㎉)?/i },
+    { key: 'dinnerCal',    re: /저녁[^\d]{0,15}(\d{2,4})\s*(?:kcal|㎉)?/i },
+    { key: 'snackCal',     re: /간식[^\d]{0,15}(\d{2,4})\s*(?:kcal|㎉)?/i },
+  ]
+  for (const { key: mk, re } of mealPats) {
+    const m = t.match(re)
+    if (m) result[mk] = m[1]
+  }
+
+  if (cal)             result.calories    = cal
+  if (goal)            result.goal        = goal
+  if (carbs)           result.carbs       = carbs
+  if (carbsS?.goalG)   result.carbsGoal   = carbsS.goalG
+  if (protein)         result.protein     = protein
+  if (proteinS?.goalG) result.proteinGoal = proteinS.goalG
+  if (fat)             result.fat         = fat
+  if (fatS?.goalG)     result.fatGoal     = fatS.goalG
   return result
 }
 
@@ -96,9 +127,8 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
       const saved = JSON.parse(localStorage.getItem(key)) || {}
       setDayPhoto(saved.dayPhoto || '')
       const d = {}
-      for (const k of ['calories', 'goal', 'carbs', 'protein', 'fat']) {
-        if (saved[k] != null) d[k] = saved[k]
-      }
+      const KEYS = ['calories','goal','carbs','carbsGoal','protein','proteinGoal','fat','fatGoal','breakfastCal','lunchCal','dinnerCal','snackCal']
+      for (const k of KEYS) { if (saved[k] != null) d[k] = saved[k] }
       setData(d)
       setOpen(!!saved.dayPhoto || !!saved.calories)
     } catch {}
@@ -161,11 +191,14 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
     setOcrText('')
   }
 
-  const cal     = parseFloat(data.calories) || 0
-  const goal    = parseFloat(data.goal)     || DEFAULT_GOAL
-  const carbs   = parseFloat(data.carbs)    || 0
-  const protein = parseFloat(data.protein)  || 0
-  const fat     = parseFloat(data.fat)      || 0
+  const cal      = parseFloat(data.calories)    || 0
+  const goal     = parseFloat(data.goal)        || DEFAULT_GOAL
+  const carbs    = parseFloat(data.carbs)       || 0
+  const carbsG   = parseFloat(data.carbsGoal)   || 0
+  const protein  = parseFloat(data.protein)     || 0
+  const proteinG = parseFloat(data.proteinGoal) || 0
+  const fat      = parseFloat(data.fat)         || 0
+  const fatG     = parseFloat(data.fatGoal)     || 0
 
   const calPct = Math.min(100, cal > 0 ? (cal / goal) * 100 : 0)
 
@@ -178,6 +211,14 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
         fat:     macroCal.fat     / macroTotal * 100,
       }
     : { carbs: 0, protein: 0, fat: 0 }
+
+  const MEAL_LABELS = [
+    { key: 'breakfastCal', label: '아침' },
+    { key: 'lunchCal',     label: '점심' },
+    { key: 'dinnerCal',    label: '저녁' },
+    { key: 'snackCal',     label: '간식' },
+  ]
+  const mealRows = MEAL_LABELS.filter(({ key }) => data[key])
 
   const hasData = cal > 0 || carbs > 0 || protein > 0 || fat > 0
 
@@ -255,26 +296,42 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
               </div>
               <div className="diet-goal-pct-label">{calPct.toFixed(0)}% 섭취</div>
 
-              {/* 탄·단·지 */}
+              {/* 탄·단·지: 탄 92/163g  21% */}
               {macroTotal > 0 && (
                 <div className="diet-macro-rows">
                   {MACROS.map(m => {
-                    const g = m.key === 'carbs' ? carbs : m.key === 'protein' ? protein : fat
-                    const kcal = macroCal[m.key]
+                    const g     = m.key === 'carbs' ? carbs : m.key === 'protein' ? protein : fat
+                    const gGoal = m.key === 'carbs' ? carbsG : m.key === 'protein' ? proteinG : fatG
+                    const barPct = gGoal > 0
+                      ? Math.min(100, g / gGoal * 100)
+                      : macroPct[m.key]
                     return (
                       <div key={m.key} className="diet-macro-row">
                         <span className="diet-macro-dot" style={{ background: m.color }} />
                         <span className="diet-macro-label">{m.label}</span>
                         <div className="diet-macro-bar-track">
                           <div className="diet-macro-bar-fill"
-                            style={{ width: `${macroPct[m.key].toFixed(1)}%`, background: m.color }} />
+                            style={{ width: `${barPct.toFixed(1)}%`, background: m.color }} />
                         </div>
-                        <span className="diet-macro-g">{Math.round(g)}g</span>
-                        <span className="diet-macro-kcal">{Math.round(kcal)}kcal</span>
+                        <span className="diet-macro-g">
+                          {Math.round(g)}{gGoal > 0 ? `/${Math.round(gGoal)}` : ''}g
+                        </span>
                         <span className="diet-macro-pct">{macroPct[m.key].toFixed(0)}%</span>
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {/* 끼니별 칼로리 */}
+              {mealRows.length > 0 && (
+                <div className="diet-meal-cal-row">
+                  {mealRows.map(({ key, label }) => (
+                    <div key={key} className="diet-meal-cal-chip">
+                      <span className="diet-meal-cal-label">{label}</span>
+                      <span className="diet-meal-cal-val">{Number(data[key]).toLocaleString()}kcal</span>
+                    </div>
+                  ))}
                 </div>
               )}
 
