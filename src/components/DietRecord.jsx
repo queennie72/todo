@@ -17,16 +17,47 @@ const FIELDS = [
 
 const EMPTY_MEAL = { calories: '', carbs: '', protein: '', fat: '' }
 
+function stripCommas(t) {
+  return t.replace(/(\d),(\d)/g, '$1$2')
+}
+
+function firstMatch(t, patterns) {
+  for (const pat of patterns) {
+    const m = t.match(pat)
+    if (m) return m[1]
+  }
+  return null
+}
+
 function extractNutrition(text) {
+  const t = stripCommas(text)
   const result = {}
-  const calM  = text.match(/(?:열량|칼로리)[^\d]{0,15}(\d{2,4})/)
-  const carbM  = text.match(/탄수화물[^\d]{0,15}(\d{1,4}(?:\.\d)?)/)
-  const protM  = text.match(/단백질[^\d]{0,15}(\d{1,3}(?:\.\d)?)/)
-  const fatM   = text.match(/지방[^\d]{0,15}(\d{1,3}(?:\.\d)?)/)
-  if (calM)  result.calories = calM[1]
-  if (carbM) result.carbs    = carbM[1]
-  if (protM) result.protein  = protM[1]
-  if (fatM)  result.fat      = fatM[1]
+
+  const cal = firstMatch(t, [
+    /(?:열량|칼로리|에너지|총\s*칼로리)[^\d]{0,50}(\d{2,5})/,
+    /(\d{3,5})\s*(?:kcal|㎉|Kcal)/i,
+    /(?:열량|칼로리)\D{0,5}(\d{2,5})/,
+  ])
+  const carbs = firstMatch(t, [
+    /탄수화물[^\d]{0,50}(\d{1,4}(?:\.\d{1,2})?)/,
+    /탄수화물\s*(\d{1,4}(?:\.\d{1,2})?)/,
+    /탄\s{0,3}(\d{1,4}(?:\.\d{1,2})?)\s*g/,
+  ])
+  const protein = firstMatch(t, [
+    /단백질[^\d]{0,50}(\d{1,3}(?:\.\d{1,2})?)/,
+    /단백질\s*(\d{1,3}(?:\.\d{1,2})?)/,
+    /단\s{0,3}(\d{1,3}(?:\.\d{1,2})?)\s*g/,
+  ])
+  const fat = firstMatch(t, [
+    /지방[^\d]{0,50}(\d{1,3}(?:\.\d{1,2})?)/,
+    /지방\s*(\d{1,3}(?:\.\d{1,2})?)/,
+    /지\s{0,3}(\d{1,3}(?:\.\d{1,2})?)\s*g/,
+  ])
+
+  if (cal)     result.calories = cal
+  if (carbs)   result.carbs    = carbs
+  if (protein) result.protein  = protein
+  if (fat)     result.fat      = fat
   return result
 }
 
@@ -102,6 +133,8 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
   const [activeMeal, setActiveMeal] = useState('breakfast')
   const [scanning, setScanning] = useState(false)
   const [scanMsg, setScanMsg] = useState('')
+  const [ocrText, setOcrText] = useState('')
+  const [showOcr, setShowOcr] = useState(false)
 
   useEffect(() => {
     try {
@@ -155,6 +188,7 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
       })
       const { data: { text } } = await worker.recognize(compressed)
       await worker.terminate()
+      setOcrText(text)
 
       const parsed = parseMealPlan(text)
       if (parsed && Object.keys(parsed).length > 0) {
@@ -258,7 +292,15 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
           {!scanning && scanMsg && (
             <div className={`scan-status ${scanMsg.startsWith('자동') ? 'scan-ok' : 'scan-fail'}`}>
               {scanMsg.startsWith('자동') ? '✓ ' : '⚠ '}{scanMsg}
+              {ocrText && (
+                <button className="ocr-toggle-btn" onClick={() => setShowOcr(v => !v)}>
+                  {showOcr ? '▲ 원문 닫기' : '▼ OCR 원문 보기'}
+                </button>
+              )}
             </div>
+          )}
+          {showOcr && ocrText && (
+            <pre className="ocr-rawtext">{ocrText}</pre>
           )}
 
           {/* 끼니 탭 */}

@@ -790,6 +790,34 @@ h1 {
   background: #fff7ed;
   color: #ea580c;
 }
+.scan-status {
+  flex-wrap: wrap;
+}
+.ocr-toggle-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+.ocr-rawtext {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0 0 0.5rem;
+}
 .scan-spinner {
   display: inline-block;
   width: 14px;
