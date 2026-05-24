@@ -1,7 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createWorker } from 'tesseract.js'
 
 const DEFAULT_GOAL = 2000
+
+// Worker를 모듈 레벨에서 캐싱 — 첫 로드만 CDN 다운로드, 이후 재사용
+let _workerPromise = null
+const _loggerRef = { fn: () => {} }
+
+function getWorker() {
+  if (!_workerPromise) {
+    _workerPromise = createWorker('kor+eng', 1, {
+      logger: m => _loggerRef.fn(m),
+    }).catch(err => {
+      _workerPromise = null   // 실패 시 다음 시도를 위해 초기화
+      throw err
+    })
+  }
+  return _workerPromise
+}
+
+const STAGE_LABEL = {
+  'loading tesseract core':       'OCR 엔진 로딩',
+  'loading language traineddata': '언어 데이터 로딩',
+  'initializing tesseract':       '초기화',
+  'recognizing text':             '텍스트 인식',
+  'initialized tesseract':        '초기화',
+  'initializing api':             '초기화',
+}
 
 const MACROS = [
   { key: 'carbs',   label: '탄수화물', short: '탄', color: '#818cf8', kcalPer: 4 },
@@ -146,19 +171,30 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
     e.target.value = ''
     const compressed = await compressImg(file)
     setDayPhoto(compressed)
+    persist(compressed, data)
     setScanning(true)
-    setScanMsg('식단 이미지 인식 중...')
+    setScanMsg('OCR 준비 중...')
     setOcrText('')
     setShowOcr(false)
+
+    // 로거를 현재 setScanMsg에 연결
+    _loggerRef.fn = m => {
+      const label = STAGE_LABEL[m.status] || m.status
+      const pct   = Math.round((m.progress || 0) * 100)
+      setScanMsg(`${label} ${pct}%`)
+    }
+
     try {
-      const worker = await createWorker('kor+eng', 1, {
-        logger: m => {
-          if (m.status === 'recognizing text')
-            setScanMsg(`인식 중 ${Math.round((m.progress || 0) * 100)}%`)
-        },
-      })
-      const { data: { text } } = await worker.recognize(compressed)
-      await worker.terminate()
+      const worker = await getWorker()
+
+      // 90초 타임아웃
+      const recognizeP = worker.recognize(compressed)
+      const timeoutP   = new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('timeout')), 90_000)
+      )
+      const { data: { text } } = await Promise.race([recognizeP, timeoutP])
+
+      _loggerRef.fn = () => {}
       setOcrText(text)
 
       const extracted = extractDayNutrition(text)
@@ -175,10 +211,15 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
         setScanMsg(`자동 인식 완료 — ${parts.join(' · ')}`)
       } else {
         setScanMsg('수치를 인식하지 못했습니다. OCR 원문을 확인해 주세요')
+        setShowOcr(true)   // 인식 실패 시 원문 자동 표시
       }
-    } catch {
-      persist(compressed, data)
-      setScanMsg('인식 실패')
+    } catch (err) {
+      _loggerRef.fn = () => {}
+      const msg = err?.message === 'timeout'
+        ? '시간 초과 (90초). 이미지를 더 작게 자른 후 재시도해 주세요'
+        : `인식 실패 — ${err?.message || ''}`
+      setScanMsg(msg)
+      if (ocrText) setShowOcr(true)
     }
     setScanning(false)
   }
