@@ -46,93 +46,80 @@ function firstMatch(t, patterns) {
   return null
 }
 
+// OCR이 'g' 단위를 숫자로 오독(92g→920, 71g→7109, 120g→1209)할 때 실제 값 복원
+// 매크로 섭취량은 500g 이하라는 전제로 초과 시 마지막 자리 제거
+function cleanGrams(raw) {
+  if (!raw) return null
+  let s = String(parseInt(raw, 10))
+  while (s.length > 2 && parseInt(s, 10) > 500) {
+    s = s.slice(0, -1)
+  }
+  const n = parseInt(s, 10)
+  return n >= 5 ? String(n) : null
+}
+
 function extractDayNutrition(text) {
   const t = stripCommas(text)
   const result = {}
 
-  // ── 총 칼로리 / 목표 ──────────────────────────────────
-  // 우선순위: "총섭취 1737/1300" → "총섭취 1737" → "총칼로리 1737"
-  // 단순 "숫자kcal"는 끼니 칼로리와 혼동되므로 사용하지 않음
-  const calGoalM = t.match(/총\s*섭취\s*(\d{3,5})\s*\/\s*(\d{3,5})/)
+  // ── 총 섭취 칼로리 / 목표 ─────────────────────────────
+  // 실제 OCR: "총 섭취                      1737 / 1300kcal"
+  const calGoalM = t.match(/총\s*섭취[^\d]{0,80}(\d{3,5})[^\d\/]{0,5}\/[^\d]*(\d{3,5})/)
   if (calGoalM) {
     result.calories = calGoalM[1]
     result.goal     = calGoalM[2]
   } else {
     const cal = firstMatch(t, [
-      /총\s*섭취\s*(\d{3,5})/,
-      /총\s*칼로리\s*(\d{3,5})/,
-      /총\s*열량\s*(\d{3,5})/,
-      /오늘\s*칼로리\s*(\d{3,5})/,
+      /총\s*섭취[^\d]{0,80}(\d{3,5})/,
+      /총\s*칼로리[^\d]{0,30}(\d{3,5})/,
     ])
     if (cal) result.calories = cal
-
-    const goal = firstMatch(t, [
-      /목표\s*(\d{3,5})/,
-      /권장\s*(\d{3,5})/,
-      /기준\s*(\d{3,5})/,
-      /기본\s*(\d{3,5})/,
-    ])
+    const goal = firstMatch(t, [/목표[^\d]{0,30}(\d{3,5})/, /권장[^\d]{0,30}(\d{3,5})/])
     if (goal) result.goal = goal
   }
 
-  // ── 탄·단·지: 여러 형식 지원 ───────────────────────────
-  // 형식A: "탄수화물 21% 92g"      pct% 먼저, g 나중 (명시적 g 단위 필수)
-  // 형식B: "탄 92/163g 21%"        g/goalg 먼저, pct% 나중
-  // 형식C: "탄수화물 92g"           g만 있는 경우 (명시적 g 단위 필수)
-  function parseMacro(label, longLabel) {
-    const ws = '[\\s\\n\\r]{0,6}'   // 공백/줄바꿈 허용
-
-    // 형식 A: label ... pct% ... ng  (g 단위 명시 필수)
+  // ── 탄·단·지 ──────────────────────────────────────────
+  // 실제 OCR: "@ 탄수화물 21%                920"
+  // g가 0·9 등으로 오독 → cleanGrams()로 복원 (920→92, 7109→71, 1209→120)
+  function parseMacro(longLabel, shortLabel) {
+    // 형식A: @ label pct%   [spaces]  number (필라이즈 기본)
     const rA = new RegExp(
-      `(?:${longLabel}|${label})${ws}(\\d{1,3})${ws}%${ws}(\\d{1,4})(?:\\.\\d)?${ws}g`
+      `(?:@[^\\n]{0,4})?(?:${longLabel}|${shortLabel})[^\\d]{0,6}(\\d{1,3})\\s*%[^\\d]{0,80}(\\d{2,6})`
     )
     const mA = t.match(rA)
-    if (mA) return { pct: mA[1], g: mA[2] }
+    if (mA) return { pct: mA[1], g: cleanGrams(mA[2]) }
 
-    // 형식 B: label ... n/ng ... pct%
+    // 형식B: label n/ng pct% (슬래시)
     const rB = new RegExp(
-      `(?:${longLabel}|${label})${ws}(\\d{1,4})${ws}\\/${ws}(\\d{1,4})${ws}g?${ws}(\\d{1,3})${ws}%`
+      `(?:${longLabel}|${shortLabel})\\s+(\\d{1,4})\\/(\\d{1,4})g?\\s*(\\d{1,3})%`
     )
     const mB = t.match(rB)
     if (mB) return { g: mB[1], goalG: mB[2], pct: mB[3] }
 
-    // 형식 B2: label ... n/ng (pct 없음)
-    const rB2 = new RegExp(
-      `(?:${longLabel}|${label})${ws}(\\d{1,4})${ws}\\/${ws}(\\d{1,4})${ws}g`
-    )
-    const mB2 = t.match(rB2)
-    if (mB2) return { g: mB2[1], goalG: mB2[2] }
-
-    // 형식 C: label ... ng  (g 단위 명시, pct 없음)
-    const rC = new RegExp(
-      `(?:${longLabel}|${label})${ws}(\\d{1,4})(?:\\.\\d)?${ws}g(?!oal)`
-    )
-    const mC = t.match(rC)
-    if (mC) return { g: mC[1] }
-
     return null
   }
 
-  const carbsM   = parseMacro('탄', '탄수화물')
-  const proteinM = parseMacro('단', '단백질')
-  const fatM     = parseMacro('지', '지방')
+  const carbsM   = parseMacro('탄수화물', '탄')
+  const proteinM = parseMacro('단백질',   '단')
+  const fatM     = parseMacro('지방',     '지')
 
-  if (carbsM?.g)      result.carbs       = carbsM.g
-  if (carbsM?.goalG)  result.carbsGoal   = carbsM.goalG
-  if (carbsM?.pct)    result.carbsPct    = carbsM.pct
-  if (proteinM?.g)    result.protein     = proteinM.g
-  if (proteinM?.goalG)result.proteinGoal = proteinM.goalG
-  if (proteinM?.pct)  result.proteinPct  = proteinM.pct
-  if (fatM?.g)        result.fat         = fatM.g
-  if (fatM?.goalG)    result.fatGoal     = fatM.goalG
-  if (fatM?.pct)      result.fatPct      = fatM.pct
+  if (carbsM?.g)       result.carbs       = carbsM.g
+  if (carbsM?.goalG)   result.carbsGoal   = carbsM.goalG
+  if (carbsM?.pct)     result.carbsPct    = carbsM.pct
+  if (proteinM?.g)     result.protein     = proteinM.g
+  if (proteinM?.goalG) result.proteinGoal = proteinM.goalG
+  if (proteinM?.pct)   result.proteinPct  = proteinM.pct
+  if (fatM?.g)         result.fat         = fatM.g
+  if (fatM?.goalG)     result.fatGoal     = fatM.goalG
+  if (fatM?.pct)       result.fatPct      = fatM.pct
 
   // ── 끼니별 칼로리 ─────────────────────────────────────
+  // 실제 OCR: "점심             775 kcal"
   const mealPats = [
-    { key: 'breakfastCal', re: /아침\s*(\d{2,4})/i },
-    { key: 'lunchCal',     re: /점심\s*(\d{2,4})/i },
-    { key: 'dinnerCal',    re: /저녁\s*(\d{2,4})/i },
-    { key: 'snackCal',     re: /간식\s*(\d{2,4})/i },
+    { key: 'breakfastCal', re: /아침[^\d]{0,30}(\d{3,4})/ },
+    { key: 'lunchCal',     re: /점심[^\d]{0,30}(\d{3,4})/ },
+    { key: 'dinnerCal',    re: /저녁[^\d]{0,30}(\d{3,4})/ },
+    { key: 'snackCal',     re: /간식[^\d]{0,30}(\d{3,4})/ },
   ]
   for (const { key: mk, re } of mealPats) {
     const m = t.match(re)
