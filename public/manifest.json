@@ -1,0 +1,24 @@
+{
+  "name": "Doing Doing",
+  "short_name": "Doing Doing",
+  "description": "나만의 하루 루틴 & 기록 앱",
+  "start_url": "/todo/",
+  "scope": "/todo/",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/todo/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/todo/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
