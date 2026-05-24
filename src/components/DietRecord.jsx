@@ -75,27 +75,38 @@ function extractDayNutrition(text) {
     if (goal) result.goal = goal
   }
 
-  // ── 탄·단·지: 두 가지 형식 모두 지원 ─────────────────
-  // 형식A: "탄수화물 21% 92g"  →  pct 먼저, g 나중
-  // 형식B: "탄 92/163g 21%"   →  g 먼저, pct 나중
+  // ── 탄·단·지: 여러 형식 지원 ───────────────────────────
+  // 형식A: "탄수화물 21% 92g"      pct% 먼저, g 나중 (명시적 g 단위 필수)
+  // 형식B: "탄 92/163g 21%"        g/goalg 먼저, pct% 나중
+  // 형식C: "탄수화물 92g"           g만 있는 경우 (명시적 g 단위 필수)
   function parseMacro(label, longLabel) {
-    // 형식 A
-    const rA = new RegExp(`${longLabel}\\s+(\\d{1,3})%\\s+(\\d{1,4})(?:\\.\\d)?g?`)
+    const ws = '[\\s\\n\\r]{0,6}'   // 공백/줄바꿈 허용
+
+    // 형식 A: label ... pct% ... ng  (g 단위 명시 필수)
+    const rA = new RegExp(
+      `(?:${longLabel}|${label})${ws}(\\d{1,3})${ws}%${ws}(\\d{1,4})(?:\\.\\d)?${ws}g`
+    )
     const mA = t.match(rA)
     if (mA) return { pct: mA[1], g: mA[2] }
 
-    // 형식 B  (슬래시 있는 경우)
-    const rB = new RegExp(`(?:${longLabel}|${label})\\s+(\\d{1,4})\\/(\\d{1,4})g?\\s*(\\d{1,3})%`)
+    // 형식 B: label ... n/ng ... pct%
+    const rB = new RegExp(
+      `(?:${longLabel}|${label})${ws}(\\d{1,4})${ws}\\/${ws}(\\d{1,4})${ws}g?${ws}(\\d{1,3})${ws}%`
+    )
     const mB = t.match(rB)
     if (mB) return { g: mB[1], goalG: mB[2], pct: mB[3] }
 
-    // 형식 B2 (슬래시, pct 없는 경우)
-    const rB2 = new RegExp(`(?:${longLabel}|${label})\\s+(\\d{1,4})\\/(\\d{1,4})g?`)
+    // 형식 B2: label ... n/ng (pct 없음)
+    const rB2 = new RegExp(
+      `(?:${longLabel}|${label})${ws}(\\d{1,4})${ws}\\/${ws}(\\d{1,4})${ws}g`
+    )
     const mB2 = t.match(rB2)
     if (mB2) return { g: mB2[1], goalG: mB2[2] }
 
-    // 폴백: 숫자만
-    const rC = new RegExp(`${longLabel}[^\\d]{0,40}(\\d{1,4}(?:\\.\\d{1,2})?)`)
+    // 형식 C: label ... ng  (g 단위 명시, pct 없음)
+    const rC = new RegExp(
+      `(?:${longLabel}|${label})${ws}(\\d{1,4})(?:\\.\\d)?${ws}g(?!oal)`
+    )
     const mC = t.match(rC)
     if (mC) return { g: mC[1] }
 
