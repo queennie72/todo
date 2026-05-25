@@ -1,16 +1,6 @@
 import { useState, useEffect } from 'react'
-import { createWorker } from 'tesseract.js'
 
 const DEFAULT_GOAL = 2000
-
-const STAGE_LABEL = {
-  'loading tesseract core':       'OCR 엔진 로딩',
-  'loading language traineddata': '언어 데이터 로딩',
-  'initializing tesseract':       '초기화',
-  'recognizing text':             '텍스트 인식',
-  'initialized tesseract':        '초기화',
-  'initializing api':             '초기화',
-}
 
 const MACROS = [
   { key: 'carbs',   label: '탄수화물', short: '탄', color: '#818cf8', kcalPer: 4 },
@@ -30,12 +20,17 @@ function firstMatch(t, patterns) {
   return null
 }
 
-// OCR이 'g' 단위를 숫자로 오독(92g→920, 71g→7109, 120g→1209)할 때 실제 값 복원
-// 매크로 섭취량은 500g 이하라는 전제로 초과 시 마지막 자리 제거
+// OCR이 'g' 단위를 숫자로 오독할 때 실제 값 복원
+// 예: 92g→920, 71g→7109, 120g→1209, 47g→470
 function cleanGrams(raw) {
   if (!raw) return null
   let s = String(parseInt(raw, 10))
-  while (s.length > 2 && parseInt(s, 10) > 500) {
+  // 500 초과: 마지막 자리 제거 (명백한 오독)
+  while (s.length > 1 && parseInt(s, 10) > 500) {
+    s = s.slice(0, -1)
+  }
+  // 400 초과이면서 끝자리 0: g→0 오독 의심 (47g→470 등)
+  if (parseInt(s, 10) > 400 && s.endsWith('0')) {
     s = s.slice(0, -1)
   }
   const n = parseInt(s, 10)
@@ -114,10 +109,12 @@ function extractDayNutrition(text) {
 }
 
 async function compressImg(file) {
-  return new Promise(res => {
+  return new Promise((res, rej) => {
     const r = new FileReader()
+    r.onerror = () => rej(new Error('파일 읽기 실패'))
     r.onload = e => {
       const img = new Image()
+      img.onerror = () => rej(new Error('이미지 로드 실패'))
       img.onload = () => {
         const MAX = 1400
         let { width: w, height: h } = img
@@ -141,27 +138,58 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
 
   const [open, setOpen]       = useState(false)
   const [dayPhoto, setDayPhoto] = useState('')
-  const [data, setData]       = useState({})   // { calories, goal, carbs, protein, fat }
+  const [data, setData]       = useState({})
   const [scanning, setScanning] = useState(false)
   const [scanMsg, setScanMsg] = useState('')
   const [ocrText, setOcrText] = useState('')
   const [showOcr, setShowOcr] = useState(false)
+  const [saveState, setSaveState] = useState('')  // '' | 'ready' | 'saving' | 'done'
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(key)) || {}
-      setDayPhoto(saved.dayPhoto || '')
-      const d = {}
-      const KEYS = ['calories','goal','carbs','carbsGoal','carbsPct','protein','proteinGoal','proteinPct','fat','fatGoal','fatPct','breakfastCal','lunchCal','dinnerCal','snackCal']
-      for (const k of KEYS) { if (saved[k] != null) d[k] = saved[k] }
-      setData(d)
-      setOpen(!!saved.dayPhoto || !!saved.calories)
-    } catch {}
-    setScanMsg('')
+    let cancelled = false
+    async function load() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key)) || {}
+
+        // 사진: localStorage → 서버 fallback 순으로 시도
+        let photo = ''
+        const rawP = localStorage.getItem(`${key}_photo`)
+        if (rawP) {
+          try { photo = JSON.parse(rawP) || '' } catch { photo = rawP }
+        }
+        if (!photo) photo = saved.dayPhoto || ''
+        if (!photo) {
+          try {
+            const res = await fetch(`/api/store/${encodeURIComponent(`${key}_photo`)}`)
+            if (res.ok) {
+              const val = await res.json()
+              if (typeof val === 'string' && val.startsWith('data:image/')) {
+                photo = val
+                try { localStorage.setItem(`${key}_photo`, JSON.stringify(photo)) } catch {}
+              }
+            }
+          } catch {}
+        }
+
+        if (cancelled) return
+        setDayPhoto(photo)
+        const d = {}
+        const KEYS = ['calories','goal','carbs','carbsGoal','carbsPct','protein','proteinGoal','proteinPct','fat','fatGoal','fatPct','breakfastCal','lunchCal','dinnerCal','snackCal']
+        for (const k of KEYS) { if (saved[k] != null) d[k] = saved[k] }
+        setData(d)
+        setOpen(!!(photo) || !!saved.calories)
+      } catch {}
+      if (!cancelled) { setScanMsg(''); setSaveState('') }
+    }
+    load()
+    return () => { cancelled = true }
   }, [key])
 
   function persist(photo, d) {
-    localStorage.setItem(key, JSON.stringify({ dayPhoto: photo, ...d }))
+    try { localStorage.setItem(key, JSON.stringify(d)) } catch (err) { console.warn('[diet] data persist failed', err) }
+    if (photo) {
+      try { localStorage.setItem(`${key}_photo`, JSON.stringify(photo)) } catch {}
+    }
     if (parseFloat(d.protein) >= 95) onProteinCheck?.('hab_protein')
   }
 
@@ -169,35 +197,61 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
     const file = e.target.files[0]
     if (!file) return
     e.target.value = ''
-    const compressed = await compressImg(file)
+
+    let compressed
+    try {
+      compressed = await compressImg(file)
+    } catch (err) {
+      setScanMsg(`이미지 처리 실패 — ${err.message}`)
+      setShowOcr(true)
+      return
+    }
+
     setDayPhoto(compressed)
-    persist(compressed, data)
     setScanning(true)
-    setScanMsg('OCR 준비 중...')
+    setScanMsg('인식 중…')
     setOcrText('')
     setShowOcr(false)
 
-    let worker = null
-    try {
-      worker = await createWorker('kor+eng', 1, {
-        logger: m => {
-          const label = STAGE_LABEL[m.status] || m.status
-          const pct   = Math.round((m.progress || 0) * 100)
-          setScanMsg(`${label} ${pct}%`)
-        },
-      })
+    // OCR 전: 영양 키(key)에는 빈 데이터를 쓰지 않음 — 사진만 별도 키에 저장
+    try { localStorage.setItem(`${key}_photo`, JSON.stringify(compressed)) } catch {}
+    fetch(`/api/store/${encodeURIComponent(`${key}_photo`)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: compressed }),
+    }).catch(() => {})
 
-      const recognizeP = worker.recognize(compressed)
-      const timeoutP   = new Promise((_, rej) =>
-        setTimeout(() => rej(new Error('timeout')), 120_000)
-      )
-      const { data: { text } } = await Promise.race([recognizeP, timeoutP])
+    try {
+      const ctrl = new AbortController()
+      const tid = setTimeout(() => ctrl.abort(), 90_000)
+      let resp
+      try {
+        resp = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: compressed }),
+          signal: ctrl.signal,
+        })
+      } finally {
+        clearTimeout(tid)
+      }
+      if (!resp.ok) {
+        const e = await resp.json().catch(() => ({}))
+        throw new Error(e.error || `서버 오류 ${resp.status}`)
+      }
+      const { text } = await resp.json()
       setOcrText(text)
 
       const extracted = extractDayNutrition(text)
       const next = { ...data, ...extracted }
       setData(next)
       persist(compressed, next)
+      // 서버에 직접 PUT — syncSet 실패 시 백업 보장
+      fetch(`/api/store/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: next }),
+      }).catch(() => {})
 
       if (Object.keys(extracted).length > 0) {
         const parts = []
@@ -210,22 +264,47 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
         setScanMsg('수치를 인식하지 못했습니다. OCR 원문을 확인해 주세요')
         setShowOcr(true)
       }
+      setSaveState('ready')
     } catch (err) {
-      const msg = err?.message === 'timeout'
-        ? '시간 초과. 이미지를 더 작게 자른 후 재시도해 주세요'
+      const msg = (err?.name === 'AbortError' || err?.name === 'TimeoutError')
+        ? '서버 응답 시간 초과 (90초)'
         : `인식 실패 — ${err?.message || '알 수 없는 오류'}`
       setScanMsg(msg)
       setShowOcr(true)
+      setSaveState('ready')
     } finally {
-      if (worker) await worker.terminate().catch(() => {})
       setScanning(false)
     }
+  }
+
+  async function saveNow() {
+    setSaveState('saving')
+    persist(dayPhoto, data)
+    try {
+      await fetch(`/api/store/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: data }),
+      })
+    } catch {}
+    if (dayPhoto) {
+      try {
+        await fetch(`/api/store/${encodeURIComponent(`${key}_photo`)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: dayPhoto }),
+        })
+      } catch {}
+    }
+    setSaveState('done')
+    setTimeout(() => setSaveState(''), 2500)
   }
 
   function removePhoto() {
     setDayPhoto('')
     setData({})
     localStorage.removeItem(key)
+    localStorage.removeItem(`${key}_photo`)
     setScanMsg('')
     setOcrText('')
   }
@@ -318,8 +397,20 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
               )}
             </div>
           )}
-          {showOcr && ocrText && (
-            <pre className="ocr-rawtext">{ocrText}</pre>
+          {showOcr && (
+            ocrText
+              ? <pre className="ocr-rawtext">{ocrText}</pre>
+              : <div className="ocr-rawtext">원문 없음 — 인식 전에 실패했거나 타임아웃</div>
+          )}
+
+          {saveState === 'ready' && (
+            <button className="save-btn" onClick={saveNow}>저장하기</button>
+          )}
+          {saveState === 'saving' && (
+            <button className="save-btn saving" disabled>저장 중…</button>
+          )}
+          {saveState === 'done' && (
+            <button className="save-btn done" disabled>✓ 저장됨</button>
           )}
 
           {hasData && (

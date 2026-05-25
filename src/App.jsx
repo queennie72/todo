@@ -269,7 +269,42 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
   const { habits, defs, toggleHabit, checkHabit } = useHabits(user.id, date)
   const [emoji, setEmoji] = useLocalStorage(`emoji_${user.id}_${date}`, '')
   const [memo, setMemo] = useLocalStorage(`memo_${user.id}_${date}`, '')
-  const [photo, setPhoto] = useLocalStorage(`photo_${user.id}_${date}`, '')
+  const [photo, setPhoto] = useState('')
+  const [photoSaveState, setPhotoSaveState] = useState('')
+
+  // 날짜 변경 시 사진 로드: localStorage 실제 사진 → 서버 fallback
+  useEffect(() => {
+    let cancelled = false
+    const photoKey = `photo_${user.id}_${date}`
+    setPhoto('')
+    setPhotoSaveState('')
+    async function loadPhoto() {
+      try {
+        const raw = localStorage.getItem(photoKey)
+        if (raw) {
+          const parsed = (() => { try { return JSON.parse(raw) } catch { return raw } })()
+          if (typeof parsed === 'string' && parsed.startsWith('data:image/')) {
+            if (!cancelled) setPhoto(parsed)
+            return
+          }
+        }
+      } catch {}
+      try {
+        const res = await fetch(`/api/store/${encodeURIComponent(photoKey)}`)
+        if (res.ok) {
+          const val = await res.json()
+          if (typeof val === 'string' && val.startsWith('data:image/')) {
+            if (!cancelled) {
+              setPhoto(val)
+              try { localStorage.setItem(photoKey, JSON.stringify(val)) } catch {}
+            }
+          }
+        }
+      } catch {}
+    }
+    loadPhoto()
+    return () => { cancelled = true }
+  }, [date, user.id])
 
   const todoDone = todos.filter(t => t.done).length
   const habitDone = habits.filter(h => h.done).length
@@ -280,6 +315,29 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
     if (!file) return
     const compressed = await compressImage(file)
     setPhoto(compressed)
+    const photoKey = `photo_${user.id}_${date}`
+    try { localStorage.setItem(photoKey, JSON.stringify(compressed)) } catch {}
+    fetch(`/api/store/${encodeURIComponent(photoKey)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: compressed }),
+    }).catch(() => {})
+    setPhotoSaveState('ready')
+  }
+
+  async function savePhoto() {
+    setPhotoSaveState('saving')
+    const photoKey = `photo_${user.id}_${date}`
+    try { localStorage.setItem(photoKey, JSON.stringify(photo)) } catch {}
+    try {
+      await fetch(`/api/store/${encodeURIComponent(photoKey)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: photo }),
+      })
+    } catch {}
+    setPhotoSaveState('done')
+    setTimeout(() => setPhotoSaveState(''), 2500)
   }
 
   return (
@@ -393,7 +451,28 @@ function TodoApp({ user, date, onBack, onLogout, onDateChange }) {
         {photo ? (
           <div className="photo-preview">
             <img src={photo} alt="오늘의 사진" className="day-photo" />
-            <button className="btn btn-ghost" onClick={() => setPhoto('')}>사진 삭제</button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label className="btn btn-ghost" style={{ cursor: 'pointer' }}>
+                <input type="file" accept="image/*" className="photo-input" onChange={handlePhotoChange} />
+                사진 변경
+              </label>
+              <button className="btn btn-ghost" onClick={() => {
+                setPhoto('')
+                setPhotoSaveState('')
+                const photoKey = `photo_${user.id}_${date}`
+                localStorage.removeItem(photoKey)
+                fetch(`/api/store/${encodeURIComponent(photoKey)}`, { method: 'DELETE' }).catch(() => {})
+              }}>사진 삭제</button>
+              {photoSaveState === 'ready' && (
+                <button className="save-btn" onClick={savePhoto}>저장하기</button>
+              )}
+              {photoSaveState === 'saving' && (
+                <button className="save-btn saving" disabled>저장 중…</button>
+              )}
+              {photoSaveState === 'done' && (
+                <button className="save-btn done" disabled>✓ 저장됨</button>
+              )}
+            </div>
           </div>
         ) : (
           <label className="photo-upload-label">

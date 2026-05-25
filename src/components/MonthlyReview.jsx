@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { loadHabitDefs, OLD_INDEX_TO_ID } from '../lib/habitDefs'
 import { BLOB_EMOJIS, BlobFace } from './BlobEmoji'
 
@@ -314,21 +314,77 @@ function buildCells(year, month) {
 function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
   const [photoPopup, setPhotoPopup] = useState(null) // { day, dateStr, photo }
   const [refresh, setRefresh] = useState(0)
+  const [popupSaveState, setPopupSaveState] = useState('')
+  // 사진 캐시: dateStr → base64
+  const [photoCache, setPhotoCache] = useState({})
+
+  // 마운트/월 변경 시 사진 로드: localStorage 우선, 없으면 서버 fallback
+  useEffect(() => {
+    let cancelled = false
+    async function loadPhotos() {
+      const cache = {}
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = toDateStr(year, month, d)
+        if (dateStr > todayStr) break
+        const key = `photo_${userId}_${dateStr}`
+        // localStorage: 실제 사진 데이터가 있을 때만 사용 (빈 문자열 '""' 무시)
+        try {
+          const raw = localStorage.getItem(key)
+          if (raw) {
+            const parsed = (() => { try { return JSON.parse(raw) } catch { return raw } })()
+            if (typeof parsed === 'string' && parsed.startsWith('data:image/')) {
+              cache[dateStr] = parsed
+              continue
+            }
+          }
+        } catch {}
+        // 서버 fallback: localStorage에 실제 사진 없을 때
+        try {
+          const res = await fetch(`/api/store/${encodeURIComponent(key)}`)
+          if (res.ok) {
+            const val = await res.json()
+            if (typeof val === 'string' && val.startsWith('data:image/')) {
+              cache[dateStr] = val
+              try { localStorage.setItem(key, JSON.stringify(val)) } catch {}
+            }
+          }
+        } catch {}
+      }
+      if (!cancelled) setPhotoCache(cache)
+    }
+    loadPhotos()
+    return () => { cancelled = true }
+  }, [userId, year, month, refresh])
 
   async function handleFileChange(e, dateStr) {
     const file = e.target.files[0]
     if (!file) return
     const compressed = await compressImg(file)
+    setPopupSaveState('saving')
     saveLS(`photo_${userId}_${dateStr}`, compressed)
+    try {
+      await fetch(`/api/store/${encodeURIComponent(`photo_${userId}_${dateStr}`)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: compressed }),
+      })
+    } catch {}
     setPhotoPopup(p => ({ ...p, photo: compressed }))
+    setPhotoCache(c => ({ ...c, [dateStr]: compressed }))
     setRefresh(r => r + 1)
+    setPopupSaveState('done')
+    setTimeout(() => setPopupSaveState(''), 2500)
     e.target.value = ''
   }
 
   function deletePhoto(dateStr) {
     localStorage.removeItem(`photo_${userId}_${dateStr}`)
+    fetch(`/api/store/${encodeURIComponent(`photo_${userId}_${dateStr}`)}`, { method: 'DELETE' }).catch(() => {})
     setPhotoPopup(p => ({ ...p, photo: null }))
+    setPhotoCache(c => { const n = { ...c }; delete n[dateStr]; return n })
     setRefresh(r => r + 1)
+    setPopupSaveState('')
   }
 
   return (
@@ -350,15 +406,14 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
         {cells.map((day, i) => {
           if (!day) return <div key={`e-${i}`} className="photo-cal-cell empty" />
           const dateStr = toDateStr(year, month, day)
-          const photo = getDayPhoto(userId, dateStr)  // refresh 변수가 있으면 리렌더 시 재호출됨
-          void refresh
+          const photo = photoCache[dateStr] || null
           const isToday = dateStr === todayStr
           const isFuture = dateStr > todayStr
           return (
             <div
               key={dateStr}
               className={`photo-cal-cell${isToday ? ' today' : ''}${isFuture ? ' future' : ''}${photo ? ' has-photo' : ''}`}
-              onClick={() => { if (!isFuture) setPhotoPopup({ day, dateStr, photo: getDayPhoto(userId, dateStr) }) }}
+              onClick={() => { if (!isFuture) setPhotoPopup({ day, dateStr, photo: photoCache[dateStr] || null }) }}
               style={{ cursor: isFuture ? 'default' : 'pointer' }}
               title={isFuture ? '' : photo ? `${month + 1}/${day} 사진 변경` : `${month + 1}/${day} 사진 추가`}
             >
@@ -400,6 +455,12 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
                 <span>사진 추가</span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>탭하면 갤러리에서 선택</span>
               </label>
+            )}
+            {popupSaveState === 'saving' && (
+              <button className="save-btn saving" disabled style={{ width: '100%', marginTop: '8px' }}>저장 중…</button>
+            )}
+            {popupSaveState === 'done' && (
+              <button className="save-btn done" disabled style={{ width: '100%', marginTop: '8px' }}>✓ 저장됨</button>
             )}
           </div>
         </div>

@@ -818,6 +818,34 @@ h1 {
   overflow-y: auto;
   margin: 0 0 0.5rem;
 }
+
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #6366f1;
+  color: #fff;
+  transition: background 0.15s, opacity 0.15s;
+  margin: 0.25rem 0;
+}
+.save-btn:hover:not(:disabled) {
+  background: #4f46e5;
+}
+.save-btn.saving {
+  background: #a5b4fc;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+.save-btn.done {
+  background: #16a34a;
+  cursor: default;
+}
 .scan-spinner {
   display: inline-block;
   width: 14px;

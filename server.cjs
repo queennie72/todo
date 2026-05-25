@@ -3,6 +3,7 @@ const express = require('express')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const { createWorker } = require('tesseract.js')
 
 const app = express()
 const PORT = 3001
@@ -12,7 +13,7 @@ const DIST = path.join(__dirname, 'dist')
 // ── 미들웨어 ──────────────────────────────────────────────────
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.sendStatus(204)
   next()
@@ -75,11 +76,44 @@ app.post('/api/store/bulk', (req, res) => {
   res.json({ ok: true, count: Object.keys(incoming).length })
 })
 
+// ── OCR ────────────────────────────────────────────────────────
+const TESSDATA = path.join(__dirname, 'dist', 'tessdata')
+
+app.post('/api/ocr', async (req, res) => {
+  const { image } = req.body
+  console.log('[OCR] request received, image length:', image?.length ?? 'none')
+  if (!image) return res.status(400).json({ error: 'image required' })
+
+  let worker
+  try {
+    worker = await createWorker('kor+eng', 1, {
+      langPath: TESSDATA,
+      gzip: true,
+      errorHandler: err => console.error('[tesseract]', err),
+    })
+    const { data: { text } } = await worker.recognize(image)
+    res.json({ text })
+  } catch (err) {
+    if (!res.headersSent) res.status(500).json({ error: err?.message || String(err) })
+  } finally {
+    if (worker) worker.terminate().catch(() => {})
+  }
+})
+
 // ── 정적 파일 (빌드된 앱) ────────────────────────────────────
 // /todo/ 경로로 서빙 (GitHub Pages와 동일한 경로)
 if (fs.existsSync(DIST)) {
-  app.use('/todo', express.static(DIST))
-  app.get('/todo/{*path}', (req, res) => {
+  app.use('/todo', express.static(DIST, {
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+        res.setHeader('Pragma', 'no-cache')
+        res.setHeader('Expires', '0')
+      }
+    },
+  }))
+  app.get(/^\/todo(\/.*)?$/, (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
     res.sendFile(path.join(DIST, 'index.html'))
   })
 }

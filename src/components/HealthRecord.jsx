@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { createWorker } from 'tesseract.js'
 
 const BASELINE = '2026-05-09'
 
@@ -83,14 +82,43 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
   const [showFields, setShowFields] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanMsg, setScanMsg] = useState('')
+  const [saveState, setSaveState] = useState('')
 
   useEffect(() => {
-    const savedIb = loadLS(ibKey) || EMPTY_IB
-    const savedBs = loadLS(bsKey)
-    setIb(savedIb)
-    setBs(savedBs != null ? String(savedBs) : '')
-    setShowFields(!!(savedIb.weight))
-    setScanMsg('')
+    let cancelled = false
+    async function load() {
+      const savedIb = loadLS(ibKey) || EMPTY_IB
+
+      // 사진: ib 내장 → 별도 키 → 서버 fallback
+      if (!savedIb.photo) {
+        const rawP = localStorage.getItem(`${ibKey}_photo`)
+        if (rawP) {
+          try { savedIb.photo = JSON.parse(rawP) || '' } catch { savedIb.photo = rawP }
+        }
+      }
+      if (!savedIb.photo) {
+        try {
+          const res = await fetch(`/api/store/${encodeURIComponent(`${ibKey}_photo`)}`)
+          if (res.ok) {
+            const val = await res.json()
+            if (typeof val === 'string' && val.startsWith('data:image/')) {
+              savedIb.photo = val
+              try { localStorage.setItem(`${ibKey}_photo`, JSON.stringify(val)) } catch {}
+            }
+          }
+        } catch {}
+      }
+
+      if (cancelled) return
+      const savedBs = loadLS(bsKey)
+      setIb(savedIb)
+      setBs(savedBs != null ? String(savedBs) : '')
+      setShowFields(!!(savedIb.weight))
+      setScanMsg('')
+      setSaveState('')
+    }
+    load()
+    return () => { cancelled = true }
   }, [ibKey, bsKey])
 
   function updateIb(field, value) {
@@ -116,24 +144,35 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
     const compressed = await compressImg(file)
     const photoState = { ...ib, photo: compressed }
     setIb(photoState)
-    saveLS(ibKey, photoState)
     setShowFields(true)
-
     setScanning(true)
-    setScanMsg('언어 데이터 로딩 중...')
+    setScanMsg('인식 중…')
+    try { saveLS(ibKey, photoState) } catch (err) { console.warn('[health] saveLS failed', err) }
+    try { localStorage.setItem(`${ibKey}_photo`, JSON.stringify(compressed)) } catch {}
+    fetch(`/api/store/${encodeURIComponent(`${ibKey}_photo`)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: compressed }),
+    }).catch(() => {})
     try {
-      const worker = await createWorker('kor+eng', 1, {
-        logger: m => {
-          if (m.status === 'loading language traineddata') {
-            setScanMsg(`언어 데이터 로딩 중 ${Math.round((m.progress || 0) * 100)}%`)
-          } else if (m.status === 'recognizing text') {
-            setScanMsg(`수치 인식 중 ${Math.round((m.progress || 0) * 100)}%`)
-          }
-        },
-      })
-      const { data: { text } } = await worker.recognize(compressed)
-      await worker.terminate()
-
+      const ctrl = new AbortController()
+      const tid = setTimeout(() => ctrl.abort(), 90_000)
+      let resp
+      try {
+        resp = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: compressed }),
+          signal: ctrl.signal,
+        })
+      } finally {
+        clearTimeout(tid)
+      }
+      if (!resp.ok) {
+        const e = await resp.json().catch(() => ({}))
+        throw new Error(e.error || `서버 오류 ${resp.status}`)
+      }
+      const { text } = await resp.json()
       const extracted = parseInbodyText(text)
       if (extracted.weight || extracted.muscle || extracted.fat) {
         const updated = { ...photoState, ...extracted }
@@ -144,16 +183,45 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
       } else {
         setScanMsg('수치를 인식하지 못했습니다. 직접 입력해 주세요')
       }
-    } catch {
-      setScanMsg('인식 실패 — 직접 입력해 주세요')
+      setSaveState('ready')
+    } catch (err) {
+      setScanMsg(`인식 실패 — ${err?.message || '직접 입력해 주세요'}`)
+      setSaveState('ready')
     }
     setScanning(false)
+  }
+
+  async function saveNow() {
+    setSaveState('saving')
+    const noPhoto = { ...ib, photo: '' }
+    saveLS(ibKey, ib)
+    try {
+      await fetch(`/api/store/${encodeURIComponent(ibKey)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: noPhoto }),
+      })
+    } catch {}
+    if (ib.photo) {
+      try { localStorage.setItem(`${ibKey}_photo`, JSON.stringify(ib.photo)) } catch {}
+      try {
+        await fetch(`/api/store/${encodeURIComponent(`${ibKey}_photo`)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: ib.photo }),
+        })
+      } catch {}
+    }
+    setSaveState('done')
+    setTimeout(() => setSaveState(''), 2500)
   }
 
   function removeInbodyPhoto() {
     const next = { ...ib, photo: '' }
     setIb(next)
     saveLS(ibKey, next)
+    localStorage.removeItem(`${ibKey}_photo`)
+    fetch(`/api/store/${encodeURIComponent(`${ibKey}_photo`)}`, { method: 'DELETE' }).catch(() => {})
   }
 
   const fatPct = ib.weight && ib.fat
@@ -204,6 +272,15 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
               <div className={`scan-status ${scanMsg.startsWith('자동 인식') ? 'scan-ok' : 'scan-fail'}`}>
                 {scanMsg.startsWith('자동 인식') ? '✓ ' : '⚠ '}{scanMsg}
               </div>
+            )}
+            {saveState === 'ready' && (
+              <button className="save-btn" onClick={saveNow}>저장하기</button>
+            )}
+            {saveState === 'saving' && (
+              <button className="save-btn saving" disabled>저장 중…</button>
+            )}
+            {saveState === 'done' && (
+              <button className="save-btn done" disabled>✓ 저장됨</button>
             )}
           </div>
         ) : (
