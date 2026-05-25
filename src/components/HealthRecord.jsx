@@ -6,18 +6,30 @@ function parseInbodyText(text) {
   const t = text.replace(/\r/g, '\n')
   const result = {}
 
-  // 체중: 40~199 범위 숫자
-  const wm = t.match(/체중\D{0,20}?(\d{2,3}(?:\.\d)?)/)
+  // 체중
+  const wm = t.match(/체중\D{0,30}?(\d{2,3}(?:\.\d)?)/)
   if (wm) result.weight = wm[1]
 
-  // 골격근량 (InBody 공식 용어) 또는 근육량
-  const mm = t.match(/골격근량\D{0,20}?(\d{1,3}(?:\.\d)?)/) ||
-             t.match(/근육량\D{0,20}?(\d{1,3}(?:\.\d)?)/)
-  if (mm) result.muscle = mm[1]
+  // 골격근량 — 형식A: 레이블 → 숫자
+  const mmA = t.match(/골격근량\D{0,40}?(\d{1,3}(?:\.\d)?)/) ||
+              t.match(/근육량\D{0,40}?(\d{1,3}(?:\.\d)?)/) ||
+              t.match(/골\s*격\s*근\s*량\D{0,40}?(\d{1,3}(?:\.\d)?)/)
+  if (mmA) result.muscle = mmA[1]
+
+  // 형식B: "숫자ky/kg" 패턴 — 체지방 앞 구간 (InBody 앱 compact OCR)
+  // 예: "23.0ky 620." — "ky"는 OCR 오독된 "kg"
+  if (!result.muscle) {
+    const fatIdx = t.indexOf('체지방')
+    const searchArea = fatIdx > 0 ? t.slice(0, fatIdx) : t
+    const kgMatch = searchArea.match(/(\d{1,2}\.\d)\s*k[a-zA-Z0-9]{0,2}/)
+    if (kgMatch && kgMatch[1] !== result.weight) {
+      result.muscle = kgMatch[1]
+    }
+  }
 
   // 체지방량 또는 체지방
   const fm = t.match(/체지방량\D{0,20}?(\d{1,3}(?:\.\d)?)/) ||
-             t.match(/체지방\s{0,5}(\d{1,3}(?:\.\d)?)/)
+             t.match(/체지방\s{0,10}(\d{1,3}(?:\.\d)?)/)
   if (fm) result.fat = fm[1]
 
   return result

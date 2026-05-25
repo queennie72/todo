@@ -310,15 +310,15 @@ function buildCells(year, month) {
   return cells
 }
 
-// ── 사진 달력 ─────────────────────────────────────────────────
-function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
-  const [photoPopup, setPhotoPopup] = useState(null) // { day, dateStr, photo }
+// ── 사진 달력 (범용) ──────────────────────────────────────────
+function PhotoCalendar({ userId, year, month, cells, todayStr, keyPrefix, title, subtitle, color }) {
+  const [photoPopup, setPhotoPopup] = useState(null)
   const [refresh, setRefresh] = useState(0)
   const [popupSaveState, setPopupSaveState] = useState('')
-  // 사진 캐시: dateStr → base64
   const [photoCache, setPhotoCache] = useState({})
 
-  // 마운트/월 변경 시 사진 로드: localStorage 우선, 없으면 서버 fallback
+  const dotColor = color || '#6366f1'
+
   useEffect(() => {
     let cancelled = false
     async function loadPhotos() {
@@ -327,8 +327,7 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = toDateStr(year, month, d)
         if (dateStr > todayStr) break
-        const key = `photo_${userId}_${dateStr}`
-        // localStorage: 실제 사진 데이터가 있을 때만 사용 (빈 문자열 '""' 무시)
+        const key = `${keyPrefix}_${userId}_${dateStr}`
         try {
           const raw = localStorage.getItem(key)
           if (raw) {
@@ -339,7 +338,6 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
             }
           }
         } catch {}
-        // 서버 fallback: localStorage에 실제 사진 없을 때
         try {
           const res = await fetch(`/api/store/${encodeURIComponent(key)}`)
           if (res.ok) {
@@ -355,16 +353,17 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
     }
     loadPhotos()
     return () => { cancelled = true }
-  }, [userId, year, month, refresh])
+  }, [userId, year, month, refresh, keyPrefix])
 
   async function handleFileChange(e, dateStr) {
     const file = e.target.files[0]
     if (!file) return
     const compressed = await compressImg(file)
     setPopupSaveState('saving')
-    saveLS(`photo_${userId}_${dateStr}`, compressed)
+    const key = `${keyPrefix}_${userId}_${dateStr}`
+    saveLS(key, compressed)
     try {
-      await fetch(`/api/store/${encodeURIComponent(`photo_${userId}_${dateStr}`)}`, {
+      await fetch(`/api/store/${encodeURIComponent(key)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: compressed }),
@@ -379,8 +378,9 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
   }
 
   function deletePhoto(dateStr) {
-    localStorage.removeItem(`photo_${userId}_${dateStr}`)
-    fetch(`/api/store/${encodeURIComponent(`photo_${userId}_${dateStr}`)}`, { method: 'DELETE' }).catch(() => {})
+    const key = `${keyPrefix}_${userId}_${dateStr}`
+    localStorage.removeItem(key)
+    fetch(`/api/store/${encodeURIComponent(key)}`, { method: 'DELETE' }).catch(() => {})
     setPhotoPopup(p => ({ ...p, photo: null }))
     setPhotoCache(c => { const n = { ...c }; delete n[dateStr]; return n })
     setRefresh(r => r + 1)
@@ -391,10 +391,10 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
     <div className="review-card">
       <div className="review-card-header">
         <div className="review-card-left">
-          <span className="review-color-dot" style={{ background: '#6366f1' }} />
+          <span className="review-color-dot" style={{ background: dotColor }} />
           <div>
-            <div className="review-card-title">이달의 사진</div>
-            <div className="review-card-habits">날짜 클릭 시 사진 추가/변경</div>
+            <div className="review-card-title">{title}</div>
+            <div className="review-card-habits">{subtitle || '날짜 클릭 시 사진 추가/변경'}</div>
           </div>
         </div>
       </div>
@@ -428,7 +428,7 @@ function PhotoCalendar({ userId, year, month, cells, todayStr, onSelectDate }) {
         <div className="photo-lightbox" onClick={() => setPhotoPopup(null)}>
           <div className="photo-lightbox-inner" onClick={e => e.stopPropagation()}>
             <div className="photo-lightbox-header">
-              <span>{month + 1}월 {photoPopup.day}일 사진</span>
+              <span>{month + 1}월 {photoPopup.day}일</span>
               <button className="photo-lightbox-close" onClick={() => setPhotoPopup(null)}>✕</button>
             </div>
 
@@ -559,7 +559,15 @@ export default function MonthlyReview({ userId, onBack }) {
       {/* 사진 달력 */}
       <PhotoCalendar
         userId={userId} year={year} month={month} cells={cells}
-        todayStr={todayStr} onSelectDate={setPopupDate}
+        todayStr={todayStr} keyPrefix="photo"
+        title="이달의 사진" color="#6366f1"
+      />
+
+      {/* 문장채집 달력 */}
+      <PhotoCalendar
+        userId={userId} year={year} month={month} cells={cells}
+        todayStr={todayStr} keyPrefix="book"
+        title="문장채집" subtitle="매일 읽은 책 페이지 사진" color="#f59e0b"
       />
 
       {/* 감정 달력 */}
