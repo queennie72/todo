@@ -89,12 +89,32 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
     async function load() {
       const savedIb = loadLS(ibKey) || EMPTY_IB
 
+      // 수치: localStorage에 없으면 서버 fallback
+      if (!savedIb.weight && !savedIb.muscle && !savedIb.fat) {
+        try {
+          const res = await fetch(`/api/store/${encodeURIComponent(ibKey)}`)
+          if (res.ok) {
+            const val = await res.json()
+            if (val && typeof val === 'object') {
+              if (val.weight) savedIb.weight = val.weight
+              if (val.muscle) savedIb.muscle = val.muscle
+              if (val.fat) savedIb.fat = val.fat
+            }
+          }
+        } catch {}
+      }
+
       // 사진: ib 내장 → 별도 키 → 서버 fallback
       if (!savedIb.photo) {
-        const rawP = localStorage.getItem(`${ibKey}_photo`)
-        if (rawP) {
-          try { savedIb.photo = JSON.parse(rawP) || '' } catch { savedIb.photo = rawP }
-        }
+        try {
+          const rawP = localStorage.getItem(`${ibKey}_photo`)
+          if (rawP) {
+            const parsed = (() => { try { return JSON.parse(rawP) } catch { return rawP } })()
+            if (typeof parsed === 'string' && parsed.startsWith('data:image/')) {
+              savedIb.photo = parsed
+            }
+          }
+        } catch {}
       }
       if (!savedIb.photo) {
         try {
@@ -124,7 +144,8 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
   function updateIb(field, value) {
     const next = { ...ib, [field]: value }
     setIb(next)
-    saveLS(ibKey, next)
+    const noPhoto = { weight: next.weight, muscle: next.muscle, fat: next.fat, photo: '' }
+    saveLS(ibKey, noPhoto)
     if (next.weight || next.muscle || next.fat) onHealthCheck?.('hab_inbody')
   }
 
@@ -177,7 +198,14 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
       if (extracted.weight || extracted.muscle || extracted.fat) {
         const updated = { ...photoState, ...extracted }
         setIb(updated)
-        saveLS(ibKey, updated)
+        // 사진 제외하고 localStorage + 서버 저장 (사진은 별도 키에 이미 저장됨)
+        const noPhoto = { weight: updated.weight, muscle: updated.muscle, fat: updated.fat, photo: '' }
+        saveLS(ibKey, noPhoto)
+        fetch(`/api/store/${encodeURIComponent(ibKey)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: noPhoto }),
+        }).catch(() => {})
         onHealthCheck?.('hab_inbody')
         setScanMsg('자동 인식 완료 — 수치를 확인해 주세요')
       } else {
@@ -193,8 +221,8 @@ export default function HealthRecord({ userId, dateStr, onHealthCheck }) {
 
   async function saveNow() {
     setSaveState('saving')
-    const noPhoto = { ...ib, photo: '' }
-    saveLS(ibKey, ib)
+    const noPhoto = { weight: ib.weight, muscle: ib.muscle, fat: ib.fat, photo: '' }
+    saveLS(ibKey, noPhoto)
     try {
       await fetch(`/api/store/${encodeURIComponent(ibKey)}`, {
         method: 'PUT',

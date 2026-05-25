@@ -149,14 +149,29 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
     let cancelled = false
     async function load() {
       try {
-        const saved = JSON.parse(localStorage.getItem(key)) || {}
+        const KEYS = ['calories','goal','carbs','carbsGoal','carbsPct','protein','proteinGoal','proteinPct','fat','fatGoal','fatPct','breakfastCal','lunchCal','dinnerCal','snackCal']
+        let saved = JSON.parse(localStorage.getItem(key)) || {}
 
-        // 사진: localStorage → 서버 fallback 순으로 시도
-        let photo = ''
-        const rawP = localStorage.getItem(`${key}_photo`)
-        if (rawP) {
-          try { photo = JSON.parse(rawP) || '' } catch { photo = rawP }
+        // 수치: localStorage에 없으면 서버 fallback
+        if (!saved.calories && !saved.protein) {
+          try {
+            const res = await fetch(`/api/store/${encodeURIComponent(key)}`)
+            if (res.ok) {
+              const val = await res.json()
+              if (val && typeof val === 'object') saved = { ...saved, ...val }
+            }
+          } catch {}
         }
+
+        // 사진: localStorage 실제 사진 → 서버 fallback
+        let photo = ''
+        try {
+          const rawP = localStorage.getItem(`${key}_photo`)
+          if (rawP) {
+            const parsed = (() => { try { return JSON.parse(rawP) } catch { return rawP } })()
+            if (typeof parsed === 'string' && parsed.startsWith('data:image/')) photo = parsed
+          }
+        } catch {}
         if (!photo) photo = saved.dayPhoto || ''
         if (!photo) {
           try {
@@ -174,7 +189,6 @@ export default function DietRecord({ userId, dateStr, onProteinCheck }) {
         if (cancelled) return
         setDayPhoto(photo)
         const d = {}
-        const KEYS = ['calories','goal','carbs','carbsGoal','carbsPct','protein','proteinGoal','proteinPct','fat','fatGoal','fatPct','breakfastCal','lunchCal','dinnerCal','snackCal']
         for (const k of KEYS) { if (saved[k] != null) d[k] = saved[k] }
         setData(d)
         setOpen(!!(photo) || !!saved.calories)
